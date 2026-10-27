@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "name": "Swat Raah",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "scheme": "swatraah",
+    "slug": "swat-raah",
+    "userInterfaceStyle": "light",
+    "version": "1.0.0",
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
