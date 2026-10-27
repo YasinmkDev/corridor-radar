@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 
 import { CORRIDORS } from '../data/seed';
+import { tick } from '../lib/haptics';
 import { colors, radius, touch, typeScale } from '../theme';
 import type { CorridorId, Direction } from '../types';
 
@@ -36,14 +37,16 @@ export function CorridorSelector({
             <Pressable
               key={c.id}
               accessibilityRole="button"
-              onPress={() => onCorridor(c.id)}
-              style={[
+              accessibilityLabel={`${c.label} corridor`}
+              onPress={() => { tick(); onCorridor(c.id); }}
+              style={({ pressed }) => [
                 styles.pill,
                 { backgroundColor: pillBg, borderColor: hairline },
                 active && styles.pillActive,
+                pressed && styles.pressed,
               ]}
             >
-              <Text style={[styles.pillText, { color: active ? '#FFFFFF' : inactiveText }]}>
+              <Text style={[styles.pillText, { color: active ? colors.white : inactiveText }]}>
                 {c.label}
               </Text>
             </Pressable>
@@ -53,30 +56,34 @@ export function CorridorSelector({
       <View style={styles.row}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => onDirection('UP')}
-          style={[
+          accessibilityLabel={`Going to ${toLabel}`}
+          onPress={() => { tick(); onDirection('UP'); }}
+          style={({ pressed }) => [
             styles.dirButton,
             { backgroundColor: pillBg, borderColor: hairline },
             direction === 'UP' && styles.dirActive,
+            pressed && styles.pressed,
           ]}
         >
-          <ArrowUp size={18} color={direction === 'UP' ? '#FFFFFF' : inactiveText} />
-          <Text style={[styles.dirText, { color: direction === 'UP' ? '#FFFFFF' : inactiveText }]}>
+          <ArrowUp size={18} color={direction === 'UP' ? colors.white : inactiveText} />
+          <Text style={[styles.dirText, { color: direction === 'UP' ? colors.white : inactiveText }]}>
             To {toLabel}
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={() => onDirection('DOWN')}
-          style={[
+          accessibilityLabel={`Going to ${fromLabel}`}
+          onPress={() => { tick(); onDirection('DOWN'); }}
+          style={({ pressed }) => [
             styles.dirButton,
             { backgroundColor: pillBg, borderColor: hairline },
             direction === 'DOWN' && styles.dirActive,
+            pressed && styles.pressed,
           ]}
         >
-          <ArrowDown size={18} color={direction === 'DOWN' ? '#FFFFFF' : inactiveText} />
+          <ArrowDown size={18} color={direction === 'DOWN' ? colors.white : inactiveText} />
           <Text
-            style={[styles.dirText, { color: direction === 'DOWN' ? '#FFFFFF' : inactiveText }]}
+            style={[styles.dirText, { color: direction === 'DOWN' ? colors.white : inactiveText }]}
           >
             To {fromLabel}
           </Text>
@@ -98,7 +105,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 8,
   },
-  pillActive: { backgroundColor: colors.emerald, borderColor: colors.emerald },
+  pillActive: { backgroundColor: colors.emeraldAction, borderColor: colors.emeraldAction },
   pillText: { ...typeScale.smallBold, textAlign: 'center' },
   dirButton: {
     flex: 1,
@@ -106,11 +113,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     borderRadius: radius.pill,
     borderWidth: 1,
     paddingHorizontal: 8,
   },
-  dirActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  dirActive: { backgroundColor: colors.emeraldAction, borderColor: colors.emeraldAction },
   dirText: { ...typeScale.smallBold },
+  pressed: { opacity: 0.65 },
 });

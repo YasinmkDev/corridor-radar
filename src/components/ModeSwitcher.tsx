@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Car, User } from 'lucide-react-native';
 
+import { tick } from '../lib/haptics';
 import { colors, radius, touch, typeScale } from '../theme';
 import type { Mode } from '../types';
 
@@ -16,24 +17,33 @@ export function ModeSwitcher({ mode, onChange, dark }: Props) {
     <View style={[styles.wrap, dark && styles.wrapDark]}>
       <Pressable
         accessibilityRole="button"
-        onPress={() => onChange('passenger')}
-        style={[
+        accessibilityLabel="Passenger mode"
+        onPress={() => { tick(); onChange('passenger'); }}
+        style={({ pressed }) => [
           styles.button,
           mode === 'passenger' && styles.active,
+          pressed && styles.pressed,
         ]}
       >
-        <User size={20} color={mode === 'passenger' ? '#FFFFFF' : inactiveText} />
-        <Text style={[styles.label, { color: mode === 'passenger' ? '#FFFFFF' : inactiveText }]}>
+        <User size={20} color={mode === 'passenger' ? colors.white : inactiveText} />
+        <Text
+          style={[styles.label, { color: mode === 'passenger' ? colors.white : inactiveText }]}
+        >
           Passenger Mode
         </Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        onPress={() => onChange('driver')}
-        style={[styles.button, mode === 'driver' && styles.active]}
+        accessibilityLabel="Driver cockpit"
+        onPress={() => { tick(); onChange('driver'); }}
+        style={({ pressed }) => [
+          styles.button,
+          mode === 'driver' && styles.active,
+          pressed && styles.pressed,
+        ]}
       >
-        <Car size={20} color={mode === 'driver' ? '#FFFFFF' : inactiveText} />
-        <Text style={[styles.label, { color: mode === 'driver' ? '#FFFFFF' : inactiveText }]}>
+        <Car size={20} color={mode === 'driver' ? colors.white : inactiveText} />
+        <Text style={[styles.label, { color: mode === 'driver' ? colors.white : inactiveText }]}>
           Driver Cockpit
         </Text>
       </Pressable>
@@ -44,7 +54,7 @@ export function ModeSwitcher({ mode, onChange, dark }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.hairline,
     borderRadius: radius.pill,
     padding: 4,
   },
@@ -59,6 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: 8,
   },
-  active: { backgroundColor: colors.emerald },
+  active: { backgroundColor: colors.emeraldAction },
   label: { ...typeScale.smallBold },
+  pressed: { opacity: 0.65 },
 });

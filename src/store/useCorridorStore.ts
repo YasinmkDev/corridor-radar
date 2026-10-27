@@ -49,10 +49,26 @@ interface CorridorState {
   mode: Mode;
   corridorId: CorridorId;
   direction: Direction;
-  myStopIndex: number;
+  /** The passenger's standing stop, remembered per corridor. */
+  myStopByCorridor: Record<CorridorId, number>;
   seatCount: 1 | 2 | 3;
   needsFamilySeat: boolean;
   myPingIds: Record<CorridorId, string | null>;
+  /** Set when the user's own hand expires: a re-raiseable notice, not a silent loss. */
+  expiredNotice: {
+    corridorId: CorridorId;
+    stopIndex: number;
+    direction: Direction;
+    passengerCount: number;
+    needsFamilySeat: boolean;
+  } | null;
+  /** Set when the user marks a locked ride complete: the designed trip ending. */
+  completedTrip: {
+    driverName: string;
+    vehicleType: string;
+    plateNumber: string;
+    passengerCount: number;
+  } | null;
   vehicles: Vehicle[];
   pings: Ping[];
   alerts: RoadAlert[];
@@ -68,6 +84,14 @@ interface CorridorState {
   tick: () => void;
   raiseHand: () => void;
   cancelHand: () => void;
+  /** Release every hold the driver's vehicle currently owns, seats restored. */
+  releaseHold: () => void;
+  /** Mark the locked ride complete: ping cleared, held seats freed, thank-you shown. */
+  completeTrip: () => void;
+  dismissCompletedTrip: () => void;
+  dismissExpiredNotice: () => void;
+  /** Re-raise the expired hand at its original stop, corridor, and direction. */
+  raiseAgainFromNotice: () => void;
   claimNextPing: () => string | null;
   adjustMySeats: (delta: number) => void;
   toggleMyFamilySeat: () => void;
@@ -85,22 +109,24 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
   mode: 'passenger',
   corridorId: 'mingora_matta',
   direction: 'UP',
-  myStopIndex: 3,
+  myStopByCorridor: { mingora_matta: 3, mingora_bahrain: 2 },
   seatCount: 2,
   needsFamilySeat: false,
   myPingIds: { mingora_matta: null, mingora_bahrain: null },
+  expiredNotice: null,
+  completedTrip: null,
   vehicles: SEED_VEHICLES,
   pings: SEED_PINGS,
   alerts: [],
   nowMs: Date.now(),
 
   setMode: (mode) => set({ mode }),
-  setCorridor: (corridorId) => {
-    const stops = corridorById(corridorId).stops.length;
-    set((s) => ({ corridorId, myStopIndex: Math.min(s.myStopIndex, stops - 1) }));
-  },
+  setCorridor: (corridorId) => set({ corridorId }),
   setDirection: (direction) => set({ direction }),
-  setMyStop: (myStopIndex) => set({ myStopIndex }),
+  setMyStop: (index) =>
+    set((s) => ({
+      myStopByCorridor: { ...s.myStopByCorridor, [s.corridorId]: index },
+    })),
   setSeatCount: (seatCount) => set({ seatCount }),
   setNeedsFamilySeat: (needsFamilySeat) => set({ needsFamilySeat }),
 
@@ -125,17 +151,42 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
         }
         return { ...v, currentStopIndex, progress, direction };
       });
+      const expired = s.pings.filter((p) => p.expiresAt <= now);
       const pings = s.pings.filter((p) => p.expiresAt > now);
       const aliveIds = new Set(pings.map((p) => p.id));
       const myPingIds = { ...s.myPingIds };
+      let expiredNotice = s.expiredNotice;
       (Object.keys(myPingIds) as CorridorId[]).forEach((key) => {
-        if (myPingIds[key] && !aliveIds.has(myPingIds[key] as string)) myPingIds[key] = null;
+        if (myPingIds[key] && !aliveIds.has(myPingIds[key] as string)) {
+          const lost = expired.find((p) => p.id === myPingIds[key]);
+          if (lost && !expiredNotice) {
+            expiredNotice = {
+              corridorId: lost.corridorId,
+              stopIndex: lost.stopIndex,
+              direction: lost.direction,
+              passengerCount: lost.passengerCount,
+              needsFamilySeat: lost.needsFamilySeat,
+            };
+          }
+          myPingIds[key] = null;
+        }
+      });
+      // A claimed ping that expires frees the seats it held (all vehicles,
+      // not just the user's) — otherwise holds would leak seats forever.
+      const vehiclesWithRestoredSeats = vehicles.map((v) => {
+        const freed = expired
+          .filter((p) => p.claimedByVehicleId === v.id)
+          .reduce((sum, p) => sum + p.passengerCount, 0);
+        return freed > 0
+          ? { ...v, availableSeats: Math.min(v.capacity, v.availableSeats + freed) }
+          : v;
       });
       return {
-        vehicles,
+        vehicles: vehiclesWithRestoredSeats,
         pings,
         alerts: s.alerts.filter((a) => a.expiresAt > now),
         myPingIds,
+        expiredNotice,
         nowMs: now,
       };
     }),
@@ -148,7 +199,7 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
       const ping: Ping = {
         id: nextId('ping'),
         corridorId: s.corridorId,
-        stopIndex: s.myStopIndex,
+        stopIndex: s.myStopByCorridor[s.corridorId],
         direction: s.direction,
         passengerCount: s.seatCount,
         needsFamilySeat: s.needsFamilySeat,
@@ -160,6 +211,7 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
       return {
         pings: [...rest, ping],
         myPingIds: { ...s.myPingIds, [s.corridorId]: ping.id },
+        expiredNotice: null,
       };
     }),
 
@@ -167,9 +219,103 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
     set((s) => {
       const id = s.myPingIds[s.corridorId];
       if (!id) return {};
+      const ping = s.pings.find((p) => p.id === id);
+      // Cancelling a claimed hold frees the seats it held; cancelling an
+      // unclaimed hand frees nothing. Previously the seats leaked.
+      const vehicles =
+        ping?.claimedByVehicleId
+          ? s.vehicles.map((v) =>
+              v.id === ping.claimedByVehicleId
+                ? {
+                    ...v,
+                    availableSeats: Math.min(v.capacity, v.availableSeats + ping.passengerCount),
+                  }
+                : v,
+            )
+          : s.vehicles;
       return {
+        vehicles,
         pings: s.pings.filter((p) => p.id !== id),
         myPingIds: { ...s.myPingIds, [s.corridorId]: null },
+      };
+    }),
+
+  releaseHold: () =>
+    set((s) => {
+      const mine = s.vehicles.find((v) => v.corridorId === s.corridorId && v.isMine);
+      if (!mine) return {};
+      const held = s.pings.filter((p) => p.claimedByVehicleId === mine.id);
+      if (held.length === 0) return {};
+      const freed = held.reduce((sum, p) => sum + p.passengerCount, 0);
+      return {
+        pings: s.pings.map((p) =>
+          p.claimedByVehicleId === mine.id ? { ...p, claimedByVehicleId: null } : p,
+        ),
+        vehicles: s.vehicles.map((v) =>
+          v.id === mine.id
+            ? { ...v, availableSeats: Math.min(v.capacity, v.availableSeats + freed) }
+            : v,
+        ),
+      };
+    }),
+
+  completeTrip: () =>
+    set((s) => {
+      const id = s.myPingIds[s.corridorId];
+      const ping = id ? s.pings.find((p) => p.id === id) : undefined;
+      if (!ping || !ping.claimedByVehicleId) return {};
+      const vehicle = s.vehicles.find((v) => v.id === ping.claimedByVehicleId);
+      if (!vehicle) return {};
+      return {
+        pings: s.pings.filter((p) => p.id !== ping.id),
+        myPingIds: { ...s.myPingIds, [s.corridorId]: null },
+        vehicles: s.vehicles.map((v) =>
+          v.id === vehicle.id
+            ? { ...v, availableSeats: Math.min(v.capacity, v.availableSeats + ping.passengerCount) }
+            : v,
+        ),
+        completedTrip: {
+          driverName: vehicle.driverName,
+          vehicleType: vehicle.vehicleType,
+          plateNumber: vehicle.plateNumber,
+          passengerCount: ping.passengerCount,
+        },
+      };
+    }),
+
+  dismissCompletedTrip: () => set({ completedTrip: null }),
+
+  dismissExpiredNotice: () => set({ expiredNotice: null }),
+
+  raiseAgainFromNotice: () =>
+    set((s) => {
+      const notice = s.expiredNotice;
+      if (!notice) return {};
+      const now = Date.now();
+      const oldId = s.myPingIds[notice.corridorId];
+      const rest = oldId ? s.pings.filter((p) => p.id !== oldId) : s.pings;
+      const count = Math.min(3, Math.max(1, notice.passengerCount)) as 1 | 2 | 3;
+      const ping: Ping = {
+        id: nextId('ping'),
+        corridorId: notice.corridorId,
+        stopIndex: notice.stopIndex,
+        direction: notice.direction,
+        passengerCount: count,
+        needsFamilySeat: notice.needsFamilySeat,
+        claimedByVehicleId: null,
+        source: 'hand',
+        createdAt: now,
+        expiresAt: now + 30 * 60 * 1000,
+      };
+      return {
+        pings: [...rest, ping],
+        myPingIds: { ...s.myPingIds, [notice.corridorId]: ping.id },
+        myStopByCorridor: { ...s.myStopByCorridor, [notice.corridorId]: notice.stopIndex },
+        corridorId: notice.corridorId,
+        direction: notice.direction,
+        seatCount: count,
+        needsFamilySeat: notice.needsFamilySeat,
+        expiredNotice: null,
       };
     }),
 
@@ -306,6 +452,11 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
 
 /* ---------------- Selectors ---------------- */
 
+/** The passenger's standing stop on the current corridor (remembered per corridor). */
+export function selectMyStopIndex(s: CorridorState): number {
+  return s.myStopByCorridor[s.corridorId];
+}
+
 export function selectMyVehicle(s: CorridorState): Vehicle {
   return (
     s.vehicles.find((v) => v.corridorId === s.corridorId && v.isMine) ?? s.vehicles[0]
@@ -334,9 +485,10 @@ export interface ApproachingVehicle {
 /** Other vehicles moving toward the passenger's stop, nearest first. */
 export function selectApproaching(s: CorridorState): ApproachingVehicle[] {
   const out: ApproachingVehicle[] = [];
+  const myStopIndex = s.myStopByCorridor[s.corridorId];
   for (const v of s.vehicles) {
     if (v.corridorId !== s.corridorId || v.isMine) continue;
-    const eta = etaToStop(v, s.myStopIndex);
+    const eta = etaToStop(v, myStopIndex);
     if (eta !== null) out.push({ vehicle: v, etaMinutes: eta });
   }
   out.sort((a, b) => a.etaMinutes - b.etaMinutes);

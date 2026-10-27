@@ -6,6 +6,7 @@ export const CORRIDORS: Corridor[] = [
     label: 'Mingora ⇄ Matta',
     from: 'Mingora',
     to: 'Matta',
+    farePerStop: 30,
     stops: [
       { name: 'Mingora General Stand', km: 0 },
       { name: 'Kanju Chowk', km: 5 },
@@ -20,6 +21,7 @@ export const CORRIDORS: Corridor[] = [
     label: 'Mingora ⇄ Bahrain',
     from: 'Mingora',
     to: 'Bahrain',
+    farePerStop: 40,
     stops: [
       { name: 'Mingora / Fizagat', km: 0 },
       { name: 'Charbagh Chowk', km: 11 },

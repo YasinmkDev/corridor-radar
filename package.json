@@ -2,6 +2,7 @@
   "dependencies": {
     "expo": "~57.0.31",
     "expo-constants": "~57.0.22",
+    "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.13",
     "expo-router": "~57.0.29",
     "expo-status-bar": "~57.0.1",

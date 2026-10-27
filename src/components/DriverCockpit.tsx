@@ -2,9 +2,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Car, Eye, Hand, Mountain, Navigation, Wrench } from 'lucide-react-native';
 
 import { corridorById } from '../data/seed';
+import { success, tick } from '../lib/haptics';
 import { colors, radius, touch, typeScale } from '../theme';
 import type { AlertTag } from '../types';
 import {
+  minutesLeft,
   selectForwardRadar,
   selectMyVehicle,
   useCorridorStore,
@@ -27,10 +29,12 @@ export function DriverCockpit() {
   const alertsHere = useCorridorStore((s) =>
     s.alerts.filter((a) => a.corridorId === s.corridorId),
   );
+  const nowMs = useCorridorStore((s) => s.nowMs);
   const adjustMySeats = useCorridorStore((s) => s.adjustMySeats);
   const toggleMyFamilySeat = useCorridorStore((s) => s.toggleMyFamilySeat);
   const advanceMyVehicle = useCorridorStore((s) => s.advanceMyVehicle);
   const claimNextPing = useCorridorStore((s) => s.claimNextPing);
+  const releaseHold = useCorridorStore((s) => s.releaseHold);
   const spotSawari = useCorridorStore((s) => s.spotSawari);
   const addRoadAlert = useCorridorStore((s) => s.addRoadAlert);
 
@@ -58,24 +62,31 @@ export function DriverCockpit() {
         <View style={styles.seatRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => adjustMySeats(-1)}
-            style={styles.stepButton}
+            accessibilityLabel="One fewer empty seat"
+            onPress={() => { tick(); adjustMySeats(-1); }}
+            style={({ pressed }) => [styles.stepButton, pressed && styles.pressed]}
           >
             <Text style={styles.stepText}>−</Text>
           </Pressable>
           <Text style={styles.seatNumber}>{mine.availableSeats}</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => adjustMySeats(1)}
-            style={styles.stepButton}
+            accessibilityLabel="One more empty seat"
+            onPress={() => { tick(); adjustMySeats(1); }}
+            style={({ pressed }) => [styles.stepButton, pressed && styles.pressed]}
           >
             <Text style={styles.stepText}>+</Text>
           </Pressable>
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={toggleMyFamilySeat}
-          style={[styles.familyToggle, mine.hasFamilySeat && styles.familyToggleOn]}
+          accessibilityLabel={`Family seat available, ${mine.hasFamilySeat ? 'on' : 'off'}`}
+          onPress={() => { tick(); toggleMyFamilySeat(); }}
+          style={({ pressed }) => [
+            styles.familyToggle,
+            mine.hasFamilySeat && styles.familyToggleOn,
+            pressed && styles.pressed,
+          ]}
         >
           <Text
             style={[styles.familyToggleText, mine.hasFamilySeat && styles.familyToggleTextOn]}
@@ -85,10 +96,13 @@ export function DriverCockpit() {
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={advanceMyVehicle}
-          style={styles.nextButton}
+          accessibilityLabel={
+            atTerminus ? `Turn around at ${shortStopName(nextStopName)}` : `Next stop, ${shortStopName(nextStopName)}`
+          }
+          onPress={() => { tick(); advanceMyVehicle(); }}
+          style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
         >
-          <Navigation size={20} color="#FFFFFF" />
+          <Navigation size={20} color={colors.white} />
           <Text style={styles.nextButtonText}>
             {atTerminus ? `Turn around at ${shortStopName(nextStopName)}` : `Next Stop → ${shortStopName(nextStopName)}`}
           </Text>
@@ -137,21 +151,32 @@ export function DriverCockpit() {
         {claimable ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => claimNextPing()}
-            style={styles.claimButton}
+            accessibilityLabel="I am coming, hold passengers"
+            onPress={() => { if (claimNextPing() !== null) success(); }}
+            style={({ pressed }) => [styles.claimButton, pressed && styles.pressed]}
           >
-            <Hand size={22} color="#FFFFFF" />
+            <Hand size={22} color={colors.white} />
             <Text style={styles.claimText}>I&apos;M COMING — HOLD PASSENGERS</Text>
           </Pressable>
         ) : (
           <Text style={styles.muted}>No waiting passengers ahead to hold right now.</Text>
         )}
         {claimedByMe.length > 0 ? (
-          <Text style={styles.holdingText}>
-            You are holding seats for{' '}
-            {claimedByMe.map((p) => shortStopName(corridor.stops[p.stopIndex].name)).join(', ')} — the
-            passenger screen is updated.
-          </Text>
+          <>
+            <Text style={styles.holdingText}>
+              You are holding seats for{' '}
+              {claimedByMe.map((p) => shortStopName(corridor.stops[p.stopIndex].name)).join(', ')} — the
+              passenger screen is updated.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Release hold, seats go back to radar"
+              onPress={() => { tick(); releaseHold(); }}
+              style={({ pressed }) => [styles.releaseButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.releaseButtonText}>Release hold · seats go back to radar</Text>
+            </Pressable>
+          </>
         ) : null}
       </View>
 
@@ -160,10 +185,11 @@ export function DriverCockpit() {
         <Text style={styles.cardTitle}>Brotherhood · Help the driver behind you</Text>
         <Pressable
           accessibilityRole="button"
-          onPress={spotSawari}
-          style={styles.spotButton}
+          accessibilityLabel="Spot sawari on road at your current stop"
+          onPress={() => { tick(); spotSawari(); }}
+          style={({ pressed }) => [styles.spotButton, pressed && styles.pressed]}
         >
-          <Eye size={20} color="#0F172A" />
+          <Eye size={20} color={colors.amberBright} />
           <Text style={styles.spotText}>Spot Sawari on Road</Text>
         </Pressable>
         <Text style={styles.muted}>
@@ -175,17 +201,19 @@ export function DriverCockpit() {
             <Pressable
               key={tag}
               accessibilityRole="button"
-              onPress={() => addRoadAlert(tag)}
-              style={styles.alertButton}
+              accessibilityLabel={`Report ${tag}`}
+              onPress={() => { tick(); addRoadAlert(tag); }}
+              style={({ pressed }) => [styles.alertButton, pressed && styles.pressed]}
             >
-              <Icon size={18} color={colors.danger} />
+              <Icon size={18} color={colors.dangerLight} />
               <Text style={styles.alertButtonText}>{tag}</Text>
             </Pressable>
           ))}
         </View>
         {alertsHere.map((a) => (
           <Text key={a.id} style={styles.activeAlert}>
-            Active: {a.tag} at {shortStopName(corridor.stops[a.stopIndex].name)}
+            Active: {a.tag} at {shortStopName(corridor.stops[a.stopIndex].name)} ·{' '}
+            {minutesLeft(a.expiresAt, nowMs)} min left
           </Text>
         ))}
       </View>
@@ -195,7 +223,7 @@ export function DriverCockpit() {
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
-  card: { backgroundColor: colors.nightCard, borderRadius: radius.card, padding: 16, gap: 10 },
+  card: { backgroundColor: colors.nightCard, borderRadius: radius.card, padding: 24, gap: 12 },
   cardTitle: { ...typeScale.subtitle, color: colors.nightText },
   cardMeta: { ...typeScale.small, color: colors.nightSecondary },
   seatLabel: { ...typeScale.smallBold, color: colors.nightSecondary, marginTop: 4 },
@@ -208,8 +236,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.night,
     borderRadius: radius.card,
   },
-  stepText: { fontSize: 32, lineHeight: 36, fontWeight: '800', color: '#FFFFFF' },
-  seatNumber: { fontSize: 48, lineHeight: 56, fontWeight: '800', color: colors.nightText },
+  stepText: { ...typeScale.step, color: colors.white },
+  seatNumber: { ...typeScale.loud, color: colors.nightText },
   familyToggle: {
     minHeight: touch.standard,
     alignItems: 'center',
@@ -219,34 +247,34 @@ const styles = StyleSheet.create({
     borderColor: colors.nightHairline,
     paddingHorizontal: 12,
   },
-  familyToggleOn: { backgroundColor: colors.indigo, borderColor: colors.indigo },
+  familyToggleOn: { backgroundColor: colors.indigoText, borderColor: colors.indigoText },
   familyToggleText: { ...typeScale.smallBold, color: colors.nightSecondary, textAlign: 'center' },
-  familyToggleTextOn: { color: '#FFFFFF' },
+  familyToggleTextOn: { color: colors.white },
   nextButton: {
     minHeight: touch.driverPrimary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.emerald,
+    backgroundColor: colors.emeraldAction,
     borderRadius: radius.card,
     paddingHorizontal: 12,
   },
-  nextButtonText: { ...typeScale.bodyBold, color: '#FFFFFF', textAlign: 'center' },
+  nextButtonText: { ...typeScale.button, color: colors.white, textAlign: 'center' },
   radarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   radarStop: { flex: 1 },
   radarStopName: { ...typeScale.smallBold, color: colors.nightText },
   radarKm: { ...typeScale.tiny, color: colors.nightSecondary },
-  amberChip: { backgroundColor: colors.amberBright, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 6 },
-  amberChipText: { ...typeScale.smallBold, color: '#0F172A' },
+  amberChip: { backgroundColor: colors.amberBright, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 8 },
+  amberChipText: { ...typeScale.smallBold, color: colors.ink },
   muted: { ...typeScale.small, color: colors.nightSecondary },
-  returnCard: { backgroundColor: colors.night, borderRadius: radius.chip, padding: 12, gap: 2 },
+  returnCard: { backgroundColor: colors.night, borderRadius: radius.chip, padding: 12, gap: 4 },
   returnTitle: { ...typeScale.smallBold, color: colors.nightText },
   returnBody: { ...typeScale.small, color: colors.nightSecondary },
   claimButton: {
@@ -254,23 +282,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.emerald,
+    gap: 12,
+    backgroundColor: colors.emeraldAction,
     borderRadius: radius.card,
     paddingHorizontal: 12,
   },
-  claimText: { ...typeScale.bodyBold, color: '#FFFFFF', textAlign: 'center' },
-  holdingText: { ...typeScale.smallBold, color: colors.emeraldBright },
+  claimText: { ...typeScale.button, color: colors.white, textAlign: 'center' },
+  holdingText: { ...typeScale.smallBold, color: colors.emeraldLight },
+  releaseButton: {
+    minHeight: touch.standard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.nightHairline,
+    paddingHorizontal: 12,
+  },
+  releaseButtonText: { ...typeScale.smallBold, color: colors.nightText, textAlign: 'center' },
   spotButton: {
     minHeight: touch.standard,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.amberBright,
     borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.nightHairline,
   },
-  spotText: { ...typeScale.bodyBold, color: '#0F172A' },
+  spotText: { ...typeScale.button, color: colors.nightText },
   alertHeading: { marginTop: 4 },
   alertRow: { flexDirection: 'row', gap: 8 },
   alertButton: {
@@ -285,5 +324,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   alertButtonText: { ...typeScale.tiny, color: colors.nightText, textAlign: 'center' },
-  activeAlert: { ...typeScale.smallBold, color: colors.danger },
+  activeAlert: { ...typeScale.smallBold, color: colors.dangerLight },
+  pressed: { opacity: 0.65 },
 });

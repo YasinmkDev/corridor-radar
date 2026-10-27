@@ -52,6 +52,8 @@ npx expo export    # static bundle export
 5. Switch back to **Passenger Mode**. The bottom bar now shows the green
    **Ride Locked!** card: Ustad Gul (White Fielder) holding your seats, with an
    ETA.
+6. Tap **Trip complete** on the locked card for the designed ending: a
+   thank-you card you dismiss with Done.
 
 Other things to try:
 
@@ -63,9 +65,20 @@ Other things to try:
 - **Road Alert:** tap Landslide/Block, Traffic Jam, or Mechanic SOS to pin a
   structured alert to your current stop (visible on the timeline).
 - **Corridor/direction switching:** state is kept per corridor, so switching
-  corridors never loses the other corridor's vehicles and pings.
+  corridors never loses the other corridor's vehicles, pings, or standing stop.
 - **Live ticks:** other vehicles advance half a stop every 4 seconds and flip
   direction at termini; pings and alerts expire after 30 minutes.
+- **Expiry + re-raise:** wait for your hand to expire (or shorten the expiry in
+  the store while testing) and watch the amber "Your hand expired" banner
+  appear — one tap on **Raise hand again** restores the exact hand.
+- **Release hold:** in Driver Cockpit, after claiming, tap **Release hold** and
+  watch the seats return and the ping go back to unclaimed on the radar.
+- **Fare line:** each approaching vehicle card shows an estimated demo fare
+  per stop (PKR 30 Matta, PKR 40 Bahrain) — labelled as a demo rate, not a
+  real tariff.
+- **Haptics:** on a real phone, mode/corridor/stop/seat/toggle changes give a
+  light selection tick; raising a hand, claiming, and completing a trip give a
+  success notification. No generic press buzz.
 
 ## Project layout
 
@@ -86,6 +99,8 @@ src/
     useCorridorStore.ts    # Zustand store + tick engine + selectors + ETA math
   data/
     seed.ts                # Corridors, seed vehicles, seed pings
+  lib/
+    haptics.ts             # Selection ticks + success notifications only
   theme.ts                 # Color tokens, type scale, touch targets
   types.ts                 # Corridor / Vehicle / Ping / Alert types
 ```
@@ -99,8 +114,12 @@ src/
 - **One-phone demo:** the "user's vehicle" per corridor is a demo stand-in
   (Ustad Gul). Real multi-user behavior needs a backend, which is deliberately
   out of scope for this build.
-- **Seat holds don't auto-release:** if a claimed ping expires, the held seats
-  are not restored to the vehicle in this build.
+- **Seat holds release cleanly:** cancelling a hold, completing a trip,
+  releasing a hold, or letting a claimed ping expire all restore the held
+  seats (clamped to capacity) and return unclaimed pings to the radar.
+- **Demo fares:** the per-stop fare shown on vehicle cards (PKR 30/40) is a
+  placeholder demo rate, not a real tariff. Replace with real tariff data
+  before any real-world use.
 - **No Urdu script:** micro-copy uses Roman Urdu/Pashto terms in Latin script
   only, so there are no font or text-shaping dependencies.
 - **Design:** flat UI only — no gradients, no glow/blur effects. The brief's

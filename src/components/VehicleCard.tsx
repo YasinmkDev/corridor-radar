@@ -8,10 +8,12 @@ interface Props {
   vehicle: Vehicle;
   /** ETA in minutes to the passenger's stop, or null when moving away. */
   etaMinutes: number | null;
+  /** Demo per-stop-segment rate for this corridor (not a real tariff). */
+  farePerStop?: number;
   dark: boolean;
 }
 
-export function VehicleCard({ vehicle, etaMinutes, dark }: Props) {
+export function VehicleCard({ vehicle, etaMinutes, farePerStop, dark }: Props) {
   const cardBg = dark ? colors.nightCard : colors.card;
   const hairline = dark ? colors.nightHairline : colors.hairline;
   const text = dark ? colors.nightText : colors.ink;
@@ -33,8 +35,8 @@ export function VehicleCard({ vehicle, etaMinutes, dark }: Props) {
       <View style={styles.metaRow}>
         {vehicle.verifiedAdda ? (
           <View style={[styles.badge, styles.verifiedBadge]}>
-            <ShieldCheck size={14} color={colors.emerald} />
-            <Text style={[styles.badgeText, { color: colors.emerald }]}>Verified Adda</Text>
+            <ShieldCheck size={14} color={colors.emeraldText} />
+            <Text style={[styles.badgeText, { color: colors.emeraldText }]}>Verified Adda</Text>
           </View>
         ) : (
           <View style={[styles.badge, { backgroundColor: dark ? colors.night : colors.canvas }]}>
@@ -57,7 +59,7 @@ export function VehicleCard({ vehicle, etaMinutes, dark }: Props) {
           <Text
             style={[
               styles.seatText,
-              { color: seatsLeft ? colors.emerald : colors.danger },
+              { color: seatsLeft ? colors.emeraldText : colors.dangerText },
             ]}
           >
             {seatsLeft ? `${vehicle.availableSeats} Seats Left · Khali Seat` : 'Full'}
@@ -65,31 +67,36 @@ export function VehicleCard({ vehicle, etaMinutes, dark }: Props) {
         </View>
         {vehicle.hasFamilySeat ? (
           <View style={[styles.seatChip, { backgroundColor: colors.indigoTint }]}>
-            <Text style={[styles.seatText, { color: colors.indigo }]}>Family / Ladies Seat</Text>
+            <Text style={[styles.seatText, { color: colors.indigoText }]}>Family / Ladies Seat</Text>
           </View>
         ) : null}
         {etaMinutes !== null ? (
           <View style={[styles.seatChip, { backgroundColor: colors.amberTint }]}>
-            <Text style={[styles.seatText, { color: colors.amber }]}>
+            <Text style={[styles.etaText, { color: colors.amberText }]}>
               {etaMinutes === 0 ? 'Arriving now' : `~${etaMinutes} mins away`}
             </Text>
           </View>
         ) : null}
       </View>
+      {farePerStop !== undefined ? (
+        <Text style={[styles.fareLine, { color: secondary }]}>
+          Est. fare PKR {farePerStop}/stop · Demo rate, not a real tariff
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.card, borderWidth: 1, padding: 16, gap: 12 },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: 24, gap: 12 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   vehicleType: { ...typeScale.subtitle },
-  driver: { ...typeScale.small, marginTop: 2 },
+  driver: { ...typeScale.small, marginTop: 4 },
   plateBox: {
     borderWidth: 1.5,
     borderRadius: radius.chip,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   plate: { ...typeScale.plate },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
@@ -97,6 +104,8 @@ const styles = StyleSheet.create({
   verifiedBadge: { backgroundColor: colors.emeraldTint },
   badgeText: { ...typeScale.tiny },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  seatChip: { borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 6 },
+  seatChip: { borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 8 },
   seatText: { ...typeScale.smallBold },
+  etaText: { ...typeScale.bodyBold },
+  fareLine: { ...typeScale.tiny },
 });

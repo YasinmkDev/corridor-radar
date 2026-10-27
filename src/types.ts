@@ -16,6 +16,12 @@ export interface Corridor {
   from: string;
   to: string;
   stops: Stop[];
+  /**
+   * DEMO placeholder only — not a real tariff. Estimated fare per stop
+   * segment, used to show an "Est. fare" before a passenger commits.
+   * Replace with real tariff data before any real-world use.
+   */
+  farePerStop: number;
 }
 
 export interface Vehicle {

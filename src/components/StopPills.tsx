@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import { tick } from '../lib/haptics';
 import { colors, radius, touch, typeScale } from '../theme';
 import type { Stop } from '../types';
 
@@ -40,14 +41,16 @@ export function StopPills({ stops, selected, onSelect, dark }: Props) {
           <Pressable
             key={stop.name}
             accessibilityRole="button"
-            onPress={() => onSelect(i)}
-            style={[
+            accessibilityLabel={`Standing at ${stop.name}`}
+            onPress={() => { tick(); onSelect(i); }}
+            style={({ pressed }) => [
               styles.pill,
               { borderColor: hairline },
               active && styles.pillActive,
+              pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.pillText, { color: active ? '#FFFFFF' : inactiveText }]}>
+            <Text style={[styles.pillText, { color: active ? colors.white : inactiveText }]}>
               {shortStopName(stop.name)}
             </Text>
           </Pressable>
@@ -64,8 +67,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
-  pillActive: { backgroundColor: colors.emerald, borderColor: colors.emerald },
+  pillActive: { backgroundColor: colors.emeraldAction, borderColor: colors.emeraldAction },
   pillText: { ...typeScale.smallBold },
+  pressed: { opacity: 0.65 },
 });

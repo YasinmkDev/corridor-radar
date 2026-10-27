@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AlertTriangle, Eye, Hand } from 'lucide-react-native';
 
+import { minutesLeft } from '../store/useCorridorStore';
 import { colors, radius, typeScale } from '../theme';
 import type { Ping, RoadAlert, Stop, Vehicle } from '../types';
 import { shortStopName } from './StopPills';
@@ -12,6 +13,8 @@ interface Props {
   alerts: RoadAlert[];
   myStopIndex: number;
   dark: boolean;
+  /** Wall-clock ms (from the store tick) so expiry labels count down live. */
+  nowMs: number;
   /** Driver name for a vehicle id, for "held by" chips. */
   driverNameFor: (vehicleId: string) => string | null;
 }
@@ -23,6 +26,7 @@ export function CorridorTimeline({
   alerts,
   myStopIndex,
   dark,
+  nowMs,
   driverNameFor,
 }: Props) {
   const text = dark ? colors.nightText : colors.ink;
@@ -65,7 +69,12 @@ export function CorridorTimeline({
                 <Text style={[styles.km, { color: secondary }]}>{stop.km} km</Text>
               </View>
               {isMyStop ? (
-                <Text style={[styles.youAreHere, { color: colors.emerald }]}>
+                <Text
+                  style={[
+                    styles.youAreHere,
+                    { color: dark ? colors.emeraldLight : colors.emeraldText },
+                  ]}
+                >
                   You are standing here · Sawari
                 </Text>
               ) : null}
@@ -84,28 +93,34 @@ export function CorridorTimeline({
                     ]}
                   >
                     {ping.source === 'hand' ? (
-                      <Hand size={14} color={holder ? colors.emerald : colors.amber} />
+                      <Hand
+                        size={14}
+                        color={holder ? colors.emeraldText : colors.amberDeep}
+                      />
                     ) : (
-                      <Eye size={14} color={colors.amber} />
+                      <Eye size={14} color={colors.amberDeep} />
                     )}
                     <Text
                       style={[
                         styles.chipText,
-                        { color: holder ? colors.emerald : colors.amber },
+                        { color: holder ? colors.emeraldText : colors.amberText },
                       ]}
                     >
                       {ping.passengerCount} waiting
                       {ping.needsFamilySeat ? ' · Family' : ''}
                       {ping.source === 'spotted' ? ' · Spotted on road' : ''}
                       {holder ? ` · Held by ${holder}` : ''}
+                      {` · ${minutesLeft(ping.expiresAt, nowMs)} min left`}
                     </Text>
                   </View>
                 );
               })}
               {stopAlerts.map((alert) => (
                 <View key={alert.id} style={[styles.chip, { backgroundColor: colors.dangerTint }]}>
-                  <AlertTriangle size={14} color={colors.danger} />
-                  <Text style={[styles.chipText, { color: colors.danger }]}>{alert.tag}</Text>
+                  <AlertTriangle size={14} color={colors.dangerText} />
+                  <Text style={[styles.chipText, { color: colors.dangerText }]}>
+                    {alert.tag} · {minutesLeft(alert.expiresAt, nowMs)} min left
+                  </Text>
                 </View>
               ))}
               {stopVehicles.map((v) => {
@@ -140,7 +155,7 @@ const styles = StyleSheet.create({
   track: { width: 20, alignItems: 'center' },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, marginTop: 4 },
   line: { width: 2, flex: 1, minHeight: 28 },
-  body: { flex: 1, paddingLeft: 10, paddingBottom: 20, gap: 6 },
+  body: { flex: 1, paddingLeft: 12, paddingBottom: 24, gap: 8 },
   stopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   stopName: { ...typeScale.smallBold, flex: 1 },
   km: { ...typeScale.tiny },
@@ -148,11 +163,11 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     alignSelf: 'flex-start',
     borderRadius: radius.chip,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   chipText: { ...typeScale.smallBold },
   vehicleLine: { ...typeScale.small },
