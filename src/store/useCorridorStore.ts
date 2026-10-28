@@ -11,7 +11,7 @@ import type {
   Vehicle,
 } from '../types';
 
-export const TICK_MS = 4000;
+export const TICK_MS = 5000;
 export const MINUTES_PER_STOP = 4;
 
 let idCounter = 1000;
@@ -97,7 +97,7 @@ interface CorridorState {
   adjustMySeats: (delta: number) => void;
   toggleMyFamilySeat: () => void;
   advanceMyVehicle: () => void;
-  spotSawari: () => void;
+  spotSawari: (passengerCount?: number, needsFamilySeat?: boolean) => void;
   addRoadAlert: (tag: AlertTag) => void;
 }
 
@@ -370,7 +370,7 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
       }),
     })),
 
-  spotSawari: () =>
+  spotSawari: (passengerCount = 2, needsFamilySeat = false) =>
     set((s) => {
       const mine = s.vehicles.find((v) => v.corridorId === s.corridorId && v.isMine);
       if (!mine) return {};
@@ -385,7 +385,9 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
       if (existing) {
         return {
           pings: s.pings.map((p) =>
-            p.id === existing.id ? { ...p, expiresAt: now + 30 * 60 * 1000 } : p,
+            p.id === existing.id
+              ? { ...p, expiresAt: now + 30 * 60 * 1000, passengerCount, needsFamilySeat }
+              : p,
           ),
         };
       }
@@ -394,8 +396,8 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
         corridorId: s.corridorId,
         stopIndex: mine.currentStopIndex,
         direction: mine.direction,
-        passengerCount: 2,
-        needsFamilySeat: false,
+        passengerCount,
+        needsFamilySeat,
         claimedByVehicleId: null,
         source: 'spotted',
         createdAt: now,

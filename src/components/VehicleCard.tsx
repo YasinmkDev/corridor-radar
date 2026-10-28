@@ -1,111 +1,98 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { ShieldCheck, Star } from 'lucide-react-native';
+import { ShieldCheck, Users } from 'lucide-react-native';
 
-import { colors, radius, typeScale } from '../theme';
-import type { Vehicle } from '../types';
+import type { Vehicle, VehicleType } from '../types';
+import { colors, typeScale } from '../theme';
+import { formatPlate } from '../lib/format';
+import { Chip } from './Chip';
 
 interface Props {
   vehicle: Vehicle;
-  /** ETA in minutes to the passenger's stop, or null when moving away. */
-  etaMinutes: number | null;
-  /** Demo per-stop-segment rate for this corridor (not a real tariff). */
-  farePerStop?: number;
-  dark: boolean;
+  /** Minutes to the passenger's stop (0 = here now). */
+  etaMinutes: number;
+  farePerSeat: number;
+  /** Adda name for the verified line (live corridors start at Mingora). */
+  addaName?: string;
 }
 
-export function VehicleCard({ vehicle, etaMinutes, farePerStop, dark }: Props) {
-  const cardBg = dark ? colors.nightCard : colors.card;
-  const hairline = dark ? colors.nightHairline : colors.hairline;
-  const text = dark ? colors.nightText : colors.ink;
-  const secondary = dark ? colors.nightSecondary : colors.inkSecondary;
-  const seatsLeft = vehicle.availableSeats > 0;
+/** Design's display name: the seed's "Hiace Coach" is a Toyota Hiace. */
+function displayType(type: VehicleType): string {
+  return type === 'Hiace Coach' ? 'Toyota Hiace Coach' : type;
+}
+
+/**
+ * Vehicle card as designed (screen 5): type + ETA chip + fare on row 1,
+ * driver + dark plate chip on row 2, verified-adda line on row 3, seat
+ * and family/standard chips on row 4. Distance and stage live on the
+ * timeline node above the card, not inside it.
+ */
+export function VehicleCard({ vehicle, etaMinutes, farePerSeat, addaName = 'Mingora' }: Props) {
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, borderColor: hairline }]}>
-      <View style={styles.topRow}>
-        <View>
-          <Text style={[styles.vehicleType, { color: text }]}>{vehicle.vehicleType}</Text>
-          <Text style={[styles.driver, { color: secondary }]}>
-            {vehicle.isMine ? 'You drive this' : `Ustad ${vehicle.driverName.replace(/^Ustad /, '')}`}
-          </Text>
-        </View>
-        <View style={[styles.plateBox, { borderColor: hairline }]}>
-          <Text style={[styles.plate, { color: text }]}>{vehicle.plateNumber}</Text>
+    <View style={styles.card}>
+      <View style={styles.row1}>
+        <Text style={styles.type}>{displayType(vehicle.vehicleType)}</Text>
+        <Chip label={etaMinutes === 0 ? 'Here now' : `${etaMinutes} mins away`} variant="apricot" />
+        <View style={styles.fare}>
+          <Text style={styles.fareAmount}>Rs. {farePerSeat}</Text>
+          <Text style={styles.fareUnit}>per seat</Text>
         </View>
       </View>
-      <View style={styles.metaRow}>
-        {vehicle.verifiedAdda ? (
-          <View style={[styles.badge, styles.verifiedBadge]}>
-            <ShieldCheck size={14} color={colors.emeraldText} />
-            <Text style={[styles.badgeText, { color: colors.emeraldText }]}>Verified Adda</Text>
-          </View>
-        ) : (
-          <View style={[styles.badge, { backgroundColor: dark ? colors.night : colors.canvas }]}>
-            <Text style={[styles.badgeText, { color: secondary }]}>Unverified</Text>
-          </View>
-        )}
-        <View style={styles.rating}>
-          <Star size={14} color={colors.amber} />
-          <Text style={[styles.badgeText, { color: text }]}>{vehicle.rating.toFixed(1)}</Text>
-          <Text style={[styles.badgeText, { color: secondary }]}>· {vehicle.tripsCompleted} trips</Text>
+      <View style={styles.row2}>
+        <Text style={styles.driver}>{vehicle.driverName}</Text>
+        <View style={styles.plate}>
+          <Text style={styles.plateText}>{formatPlate(vehicle.plateNumber)}</Text>
         </View>
       </View>
-      <View style={styles.metaRow}>
-        <View
-          style={[
-            styles.seatChip,
-            { backgroundColor: seatsLeft ? colors.emeraldTint : colors.dangerTint },
-          ]}
-        >
-          <Text
-            style={[
-              styles.seatText,
-              { color: seatsLeft ? colors.emeraldText : colors.dangerText },
-            ]}
-          >
-            {seatsLeft ? `${vehicle.availableSeats} Seats Left · Khali Seat` : 'Full'}
-          </Text>
+      {vehicle.verifiedAdda ? (
+        <View style={styles.verified}>
+          <ShieldCheck size={14} color={colors.success} />
+          <Text style={styles.verifiedText}>Verified {addaName} Adda Member</Text>
         </View>
-        {vehicle.hasFamilySeat ? (
-          <View style={[styles.seatChip, { backgroundColor: colors.indigoTint }]}>
-            <Text style={[styles.seatText, { color: colors.indigoText }]}>Family / Ladies Seat</Text>
-          </View>
-        ) : null}
-        {etaMinutes !== null ? (
-          <View style={[styles.seatChip, { backgroundColor: colors.amberTint }]}>
-            <Text style={[styles.etaText, { color: colors.amberText }]}>
-              {etaMinutes === 0 ? 'Arriving now' : `~${etaMinutes} mins away`}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-      {farePerStop !== undefined ? (
-        <Text style={[styles.fareLine, { color: secondary }]}>
-          Est. fare PKR {farePerStop}/stop · Demo rate, not a real tariff
-        </Text>
       ) : null}
+      <View style={styles.chips}>
+        <Chip
+          label={vehicle.availableSeats === 0 ? 'Full' : `${vehicle.availableSeats} Seats Empty`}
+          variant="green"
+          dot={vehicle.availableSeats > 0}
+        />
+        {vehicle.hasFamilySeat ? (
+          <Chip label="Family/Ladies Seat" variant="indigo" />
+        ) : (
+          <Chip
+            label="Standard Cabin"
+            variant="grey"
+            icon={<Users size={12} color={colors.inkSecondary} />}
+          />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.card, borderWidth: 1, padding: 24, gap: 12 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  vehicleType: { ...typeScale.subtitle },
-  driver: { ...typeScale.small, marginTop: 4 },
-  plateBox: {
-    borderWidth: 1.5,
-    borderRadius: radius.chip,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  card: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
   },
-  plate: { ...typeScale.plate },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.chip, paddingHorizontal: 8, paddingVertical: 4 },
-  verifiedBadge: { backgroundColor: colors.emeraldTint },
-  badgeText: { ...typeScale.tiny },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  seatChip: { borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 8 },
-  seatText: { ...typeScale.smallBold },
-  etaText: { ...typeScale.bodyBold },
-  fareLine: { ...typeScale.tiny },
+  row1: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  type: { ...typeScale.headlineSm, color: colors.ink, flex: 1 },
+  fare: { alignItems: 'flex-end' },
+  fareAmount: { ...typeScale.headlineSm, color: colors.primaryDeep },
+  fareUnit: { ...typeScale.labelSm, color: colors.muted },
+  row2: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  driver: { ...typeScale.labelLg, color: colors.ink },
+  plate: {
+    backgroundColor: colors.ink,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  plateText: { ...typeScale.labelMd, color: colors.white, letterSpacing: 0.5 },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  verifiedText: { ...typeScale.labelMd, color: colors.success },
+  chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
 });

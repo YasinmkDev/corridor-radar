@@ -1,155 +1,128 @@
-export const colors = {
-  canvas: '#F8FAFC',
-  card: '#FFFFFF',
-  white: '#FFFFFF',
-  night: '#0F172A',
-  nightCard: '#1E293B',
-  nightHairline: '#334155',
-  ink: '#0F172A',
-  inkSecondary: '#475569',
-  nightText: '#F1F5F9',
-  nightSecondary: '#CBD5E1',
-  hairline: '#E2E8F0',
-  emerald: '#059669',
-  emeraldBright: '#10B981',
-  emeraldTint: '#D1FAE5',
-  /** Dark emerald text on light surfaces. AAA on canvas, tint, and white. */
-  emeraldText: '#064E3B',
-  /**
-   * Primary action + selected-state fill. AAA (9.72) with white text.
-   * Mid emerald #059669 is reserved for non-text accents (dots, borders,
-   * icons on white) because white text on it is only 3.77:1 (fails AA).
-   */
-  emeraldAction: '#064E3B',
-  /** Bright emerald text on dark surfaces. AAA on nightCard. */
-  emeraldLight: '#6EE7B7',
-  amber: '#D97706',
-  amberBright: '#F59E0B',
-  amberTint: '#FEF3C7',
-  /** Dark amber text on light surfaces. AAA on tint and white. */
-  amberText: '#78350F',
-  /** Amber icon on light surfaces. AAA on white. */
-  amberDeep: '#92400E',
-  indigo: '#4F46E5',
-  indigoTint: '#E0E7FF',
-  /** Dark indigo text on light surfaces. AAA on indigoTint. */
-  indigoText: '#312E81',
-  danger: '#DC2626',
-  dangerTint: '#FEE2E2',
-  /** Dark red text on light surfaces. AAA on dangerTint. */
-  dangerText: '#7F1D1D',
-  /** Light red text and icons on dark surfaces. AAA on nightCard. */
-  dangerLight: '#FCA5A5',
+/**
+ * Warm Apricot Corridor — the user's own design system, from
+ * warm_apricot_corridor/DESIGN.md. This file is the single token source:
+ * no screen may use a hex literal or a fontSize/lineHeight outside it.
+ *
+ * Fonts: Plus Jakarta Sans (headlines) + Inter (body) via expo-font and
+ * @expo-google-fonts. Each weight is its own family name, so type entries
+ * set fontFamily only and never fontWeight — setting both breaks the
+ * weight lookup on Android. If the fonts have not loaded yet, React
+ * Native falls back to the system font at the same sizes.
+ *
+ * Shadows are the design's own soft warm shadows (warm-tinted, subtle).
+ * Never neon, never coloured glow, never gradients.
+ */
 
-  /* ---- Schematic map canvas (2026-10-28 map rebuild) ---- */
-  /** Warm paper-grey day map canvas (research starting token). */
-  mapCanvasDay: '#F2EFE9',
-  /** Night map canvas. Same geometry, muted fills, brighter text. */
-  mapCanvasNight: '#12151C',
-  /** Faint grid stroke on day canvas. */
-  mapGridDay: '#D8D2C7',
-  /** Faint grid stroke on night canvas. */
-  mapGridNight: '#232A38',
-  /** Untravelled track on day canvas. */
-  mapTrackDay: '#D9D2C6',
-  /** Untravelled track on night canvas. */
-  mapTrackNight: '#2A3140',
-  /** Sheet surface on night map (lighter than canvas = elevation). */
-  sheetNight: '#1C212E',
-  /**
-   * Corridor identity colours. Outside the reserved status hues (seats
-   * green, demand amber, family indigo) and used ONLY for the route line
-   * + corridor chip, always paired with letter + name. Measured: cyan-700
-   * 4.67:1 on paper / 5.36:1 white-on-fill (AA); rose-700 5.26:1 on paper /
-   * 6.04:1 white-on-fill (AA). On night canvas they pass the 3:1 non-text
-   * floor only (3.41 / 3.03), so the night line renders 1 unit thicker.
-   */
-  corridorA: '#0E7490',
-  corridorB: '#BE185D',
-  /** Seats badge fill on vehicle markers. White text on it is 5.02:1 (AA). */
-  seatsBadge: '#15803D',
+export const colors = {
+  /** Creamy warm alabaster canvas. */
+  canvas: '#FFFBF5',
+  /** Pure white card surface. */
+  card: '#FFFFFF',
+  /** Delicate peach-tinted card border. */
+  cardBorder: '#FED7AA',
+  /** Deep warm charcoal text. */
+  ink: '#1C1917',
+  /** Warm secondary text. */
+  inkSecondary: '#5A4138',
+  /** Muted outline text. */
+  muted: '#8E7166',
+  /** Warm neutral border. */
+  outline: '#E2BFB2',
+  /** Low container surface. */
+  surfaceLow: '#F7F3ED',
+  /** Container surface. */
+  surface: '#F1EDE7',
+  /** Warm Amber Coral — primary actions and CTAs. */
+  primary: '#EA580C',
+  /** Deep accent for pressed/emphasis states. */
+  primaryDeep: '#A33900',
+  /** Strong container (secondary accents, progress). */
+  primaryContainer: '#CC4900',
+  /** Vibrant soft orange — secondary accents, live pulses. */
+  secondary: '#F97316',
+  /** Soft apricot container (chips, active segments, selected rows). */
+  apricot: '#FFEDD5',
+  /** Peach glow (borders, high-demand fills). */
+  apricotDeep: '#FED7AA',
+  /** Royal indigo — reserved for family/ladies seating ONLY. */
+  family: '#4338CA',
+  /** Lavender-indigo wash for family badges. */
+  familyTint: '#EEF2FF',
+  /** Success green (verified, confirmed). */
+  success: '#15803D',
+  /** Bright success green. */
+  successBright: '#16A34A',
+  /** Soft green wash. */
+  successTint: '#DCFCE7',
+  /** Error red. */
+  error: '#BA1A1A',
+  /** Soft red wash. */
+  errorTint: '#FFDAD6',
+  /** High-demand fill (peach glow) with charcoal text. */
+  demandBg: '#FED7AA',
+  /** White text on primary. */
+  white: '#FFFFFF',
+};
+
+/** Font family names (expo-google-fonts). One name per weight. */
+export const fonts = {
+  jakarta800: 'PlusJakartaSans_800ExtraBold',
+  jakarta700: 'PlusJakartaSans_700Bold',
+  jakarta600: 'PlusJakartaSans_600SemiBold',
+  inter700: 'Inter_700Bold',
+  inter600: 'Inter_600SemiBold',
+  inter500: 'Inter_500Medium',
+  inter400: 'Inter_400Regular',
 };
 
 export const typeScale = {
-  display: { fontSize: 28, lineHeight: 34, fontWeight: '800' as const },
-  title: { fontSize: 20, lineHeight: 26, fontWeight: '800' as const },
-  subtitle: { fontSize: 16, lineHeight: 22, fontWeight: '700' as const },
-  body: { fontSize: 16, lineHeight: 22, fontWeight: '400' as const },
-  bodyBold: { fontSize: 16, lineHeight: 22, fontWeight: '700' as const },
-  /** Button and primary-action labels: one size, one weight, everywhere. */
-  button: { fontSize: 16, lineHeight: 22, fontWeight: '700' as const },
-  small: { fontSize: 14, lineHeight: 20, fontWeight: '400' as const },
-  smallBold: { fontSize: 14, lineHeight: 20, fontWeight: '700' as const },
-  tiny: { fontSize: 12, lineHeight: 16, fontWeight: '600' as const },
-  plate: { fontSize: 14, lineHeight: 20, fontWeight: '800' as const, letterSpacing: 1.5 },
-  /** Stepper glyphs (−/+) only. The seat numeral itself uses `loud`. */
-  step: { fontSize: 32, lineHeight: 36, fontWeight: '800' as const },
-  /**
-   * The product's ONE loud moment: the driver's glanceable seat numeral.
-   * Nothing else uses this size.
-   */
-  loud: { fontSize: 48, lineHeight: 56, fontWeight: '800' as const },
-  /** Map stop name: the largest text drawn on the canvas. */
-  mapLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' as const },
-  /** Map secondary line: km + state under a stop name. */
-  mapMeta: { fontSize: 12, lineHeight: 16, fontWeight: '500' as const },
-  /** Map micro-labels: badges, NEXT markers, ETA pills, seats badges. */
-  mapMicro: { fontSize: 11, lineHeight: 14, fontWeight: '700' as const },
-  /** Map micro-tags: YOU tag, family diamond, badge letters. */
-  mapTag: { fontSize: 10, lineHeight: 14, fontWeight: '700' as const },
-  /** Map ruler numbers: kilometres along the track edge. */
-  mapRuler: { fontSize: 10, lineHeight: 14, fontWeight: '500' as const },
-  /** Sheet ETA headline: the largest figure on the sheet. */
-  etaHeadline: { fontSize: 20, lineHeight: 28, fontWeight: '800' as const },
+  /** Display headlines (Plus Jakarta Sans 800). */
+  display: { fontFamily: fonts.jakarta800, fontSize: 28, lineHeight: 34 },
+  headline: { fontFamily: fonts.jakarta700, fontSize: 24, lineHeight: 30 },
+  headlineMd: { fontFamily: fonts.jakarta700, fontSize: 20, lineHeight: 26 },
+  headlineSm: { fontFamily: fonts.jakarta600, fontSize: 18, lineHeight: 24 },
+  /** Body copy (Inter 500). */
+  body: { fontFamily: fonts.inter500, fontSize: 16, lineHeight: 24 },
+  bodySm: { fontFamily: fonts.inter400, fontSize: 14, lineHeight: 20 },
+  small: { fontFamily: fonts.inter400, fontSize: 12, lineHeight: 16 },
+  labelLg: { fontFamily: fonts.inter700, fontSize: 14, lineHeight: 18 },
+  labelMd: { fontFamily: fonts.inter600, fontSize: 12, lineHeight: 16 },
+  labelSm: { fontFamily: fonts.inter700, fontSize: 10, lineHeight: 14 },
+  /** Large numerals (ETA, seat counts). */
+  loud: { fontFamily: fonts.jakarta800, fontSize: 28, lineHeight: 34 },
+  step: { fontFamily: fonts.jakarta700, fontSize: 20, lineHeight: 26 },
 };
 
-/** Minimum touch targets: 56px everywhere, 64px for driver primary actions. */
-export const touch = {
-  standard: 56,
-  driverPrimary: 64,
-};
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48, huge: 64 };
 
-/**
- * Radii vocabulary, each with one job:
- * - card (16): content cards and large primary action blocks.
- * - pill (999): selectors, mode switcher, toggle pills.
- * - chip (10): small data chips and badges.
- * - sheet (24): bottom sheet top corners only.
- */
-export const radius = {
-  card: 16,
-  pill: 999,
-  chip: 10,
-  sheet: 24,
-};
+export const radius = { card: 16, micro: 8, input: 12, sheet: 24, pill: 999 };
 
-/**
- * The canonical spacing scale. Every padding, gap, and margin in the app
- * must be one of these values (verified by grep). Borders and hairlines
- * (1–3px) and fixed component geometry (dots, tracks) are exempt.
- */
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  xxxl: 48,
-  huge: 64,
-};
+export const touch = { standard: 56, driverPrimary: 64 };
 
-/**
- * Motion tokens. No timed animation ships in this pass: press feedback is
- * an instant (<100ms) opacity/scale state change, so there is no spatial
- * motion to convert under Reduce Motion. These tokens govern any future
- * timed motion: press 100–160ms, exits shorter than enters, stagger totals
- * capped at 500ms, first screenful only, never a spring on progress.
- */
-export const motion = {
-  press: 150,
-  fast: 175,
-  base: 275,
-  stagger: 40,
-  maxSequence: 500,
+/** The design's own warm shadows (RN approximation of the CSS levels). */
+export const shadows = {
+  /** Level 1 — soft-touch cards. */
+  card: {
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+  /** Level 2 — floating sheets and drawers. */
+  sheet: {
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  /** Level 3 — tactile CTAs and pills. */
+  cta: {
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
 };

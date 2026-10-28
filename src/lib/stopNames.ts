@@ -4,7 +4,7 @@ const SHORT_NAMES: Record<string, string> = {
   Dherai: 'Dherai',
   'Kabal Chowk': 'Kabal',
   Sirsinai: 'Sirsinai',
-  'Matta Mughal Khel Stand': 'Matta',
+  'Matta General Stand': 'Matta',
   'Mingora / Fizagat': 'Fizagat',
   'Charbagh Chowk': 'Charbagh',
   'Khwazakhela Bypass': 'Khwazakhela',

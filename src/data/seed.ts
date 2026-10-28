@@ -13,7 +13,7 @@ export const CORRIDORS: Corridor[] = [
       { name: 'Dherai', km: 9 },
       { name: 'Kabal Chowk', km: 13 },
       { name: 'Sirsinai', km: 17 },
-      { name: 'Matta Mughal Khel Stand', km: 22 },
+      { name: 'Matta General Stand', km: 22 },
     ],
   },
   {
