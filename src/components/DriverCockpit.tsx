@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Car, Eye, Hand, Mountain, Navigation, Wrench } from 'lucide-react-native';
 
@@ -6,8 +7,8 @@ import { success, tick } from '../lib/haptics';
 import { colors, radius, touch, typeScale } from '../theme';
 import type { AlertTag } from '../types';
 import {
+  getForwardRadar,
   minutesLeft,
-  selectForwardRadar,
   selectMyVehicle,
   useCorridorStore,
 } from '../store/useCorridorStore';
@@ -22,12 +23,22 @@ const ALERT_TAGS: { tag: AlertTag; icon: typeof Mountain }[] = [
 export function DriverCockpit() {
   const corridorId = useCorridorStore((s) => s.corridorId);
   const mine = useCorridorStore(selectMyVehicle);
-  const radar = useCorridorStore(selectForwardRadar);
-  const claimedByMe = useCorridorStore((s) =>
-    s.pings.filter((p) => p.claimedByVehicleId === mine.id),
+  // Same rule as HomeScreen: raw state arrays are stable references, and
+  // every derived list is memoized from them. Filtering directly inside
+  // useCorridorStore returns a new array on every check and loops React.
+  const allPings = useCorridorStore((s) => s.pings);
+  const allAlerts = useCorridorStore((s) => s.alerts);
+  const radar = useMemo(
+    () => getForwardRadar(mine, allPings, corridorId),
+    [mine, allPings, corridorId],
   );
-  const alertsHere = useCorridorStore((s) =>
-    s.alerts.filter((a) => a.corridorId === s.corridorId),
+  const claimedByMe = useMemo(
+    () => allPings.filter((p) => p.claimedByVehicleId === mine.id),
+    [allPings, mine.id],
+  );
+  const alertsHere = useMemo(
+    () => allAlerts.filter((a) => a.corridorId === corridorId),
+    [allAlerts, corridorId],
   );
   const nowMs = useCorridorStore((s) => s.nowMs);
   const adjustMySeats = useCorridorStore((s) => s.adjustMySeats);

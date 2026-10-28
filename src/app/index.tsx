@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,11 +11,9 @@ import { StopPills } from '../components/StopPills';
 import { VehicleCard } from '../components/VehicleCard';
 import { corridorById } from '../data/seed';
 import {
-  selectApproaching,
+  getApproachingVehicles,
   selectMyPing,
   selectMyStopIndex,
-  selectPingsOnCorridor,
-  selectVehiclesOnCorridor,
   TICK_MS,
   useCorridorStore,
 } from '../store/useCorridorStore';
@@ -31,12 +29,29 @@ export default function HomeScreen() {
   const expiredNotice = useCorridorStore((s) => s.expiredNotice);
   const completedTrip = useCorridorStore((s) => s.completedTrip);
   const nowMs = useCorridorStore((s) => s.nowMs);
-  const vehicles = useCorridorStore(selectVehiclesOnCorridor);
-  const pings = useCorridorStore(selectPingsOnCorridor);
-  const alerts = useCorridorStore((s) =>
-    s.alerts.filter((a) => a.corridorId === s.corridorId),
+  // Raw state arrays are stable references between store updates; every
+  // derived list below is memoized from them. Filtering/mapping directly
+  // inside useCorridorStore returns a new array on every check, which made
+  // React re-render forever ("Maximum update depth exceeded", 2026-10-28).
+  const allVehicles = useCorridorStore((s) => s.vehicles);
+  const allPings = useCorridorStore((s) => s.pings);
+  const allAlerts = useCorridorStore((s) => s.alerts);
+  const vehicles = useMemo(
+    () => allVehicles.filter((v) => v.corridorId === corridorId),
+    [allVehicles, corridorId],
   );
-  const approaching = useCorridorStore(selectApproaching);
+  const pings = useMemo(
+    () => allPings.filter((p) => p.corridorId === corridorId),
+    [allPings, corridorId],
+  );
+  const alerts = useMemo(
+    () => allAlerts.filter((a) => a.corridorId === corridorId),
+    [allAlerts, corridorId],
+  );
+  const approaching = useMemo(
+    () => getApproachingVehicles(allVehicles, corridorId, myStopIndex),
+    [allVehicles, corridorId, myStopIndex],
+  );
   const myPing = useCorridorStore(selectMyPing);
 
   const setMode = useCorridorStore((s) => s.setMode);

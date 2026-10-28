@@ -469,25 +469,26 @@ export function selectMyPing(s: CorridorState): Ping | null {
   return s.pings.find((p) => p.id === id) ?? null;
 }
 
-export function selectVehiclesOnCorridor(s: CorridorState): Vehicle[] {
-  return s.vehicles.filter((v) => v.corridorId === s.corridorId);
-}
-
-export function selectPingsOnCorridor(s: CorridorState): Ping[] {
-  return s.pings.filter((p) => p.corridorId === s.corridorId);
-}
-
 export interface ApproachingVehicle {
   vehicle: Vehicle;
   etaMinutes: number;
 }
 
-/** Other vehicles moving toward the passenger's stop, nearest first. */
-export function selectApproaching(s: CorridorState): ApproachingVehicle[] {
+/**
+ * Other vehicles moving toward the passenger's stop, nearest first.
+ * Pure helper over explicit inputs: call it inside useMemo in components.
+ * It must NOT be passed directly to useCorridorStore — it builds a new
+ * array on every call, and an unstable selector crashes React with
+ * "Maximum update depth exceeded" (hit 2026-10-28 on the first phone run).
+ */
+export function getApproachingVehicles(
+  vehicles: Vehicle[],
+  corridorId: CorridorId,
+  myStopIndex: number,
+): ApproachingVehicle[] {
   const out: ApproachingVehicle[] = [];
-  const myStopIndex = s.myStopByCorridor[s.corridorId];
-  for (const v of s.vehicles) {
-    if (v.corridorId !== s.corridorId || v.isMine) continue;
+  for (const v of vehicles) {
+    if (v.corridorId !== corridorId || v.isMine) continue;
     const eta = etaToStop(v, myStopIndex);
     if (eta !== null) out.push({ vehicle: v, etaMinutes: eta });
   }
@@ -500,10 +501,19 @@ export interface ForwardRadar {
   returnDemand: Ping[];
 }
 
-/** Next 3 stops ahead of the driver's vehicle, plus return demand at the far stand. */
-export function selectForwardRadar(s: CorridorState): ForwardRadar {
-  const mine = selectMyVehicle(s);
-  const corridor = corridorById(s.corridorId);
+/**
+ * Next 3 stops ahead of the driver's vehicle, plus return demand at the far stand.
+ * Pure helper over explicit inputs: call it inside useMemo in components.
+ * It must NOT be passed directly to useCorridorStore — it builds a new
+ * object (with new inner arrays) on every call, and an unstable selector
+ * crashes React with "Maximum update depth exceeded".
+ */
+export function getForwardRadar(
+  mine: Vehicle,
+  pings: Ping[],
+  corridorId: CorridorId,
+): ForwardRadar {
+  const corridor = corridorById(corridorId);
   const step = mine.direction === 'UP' ? 1 : -1;
   const ahead: ForwardStop[] = [];
   for (let i = 1; i <= 3; i++) {
@@ -512,19 +522,19 @@ export function selectForwardRadar(s: CorridorState): ForwardRadar {
     ahead.push({
       stopIndex: idx,
       distanceKm: Math.abs(corridor.stops[idx].km - corridor.stops[mine.currentStopIndex].km),
-      pings: s.pings.filter(
+      pings: pings.filter(
         (p) =>
-          p.corridorId === s.corridorId &&
+          p.corridorId === corridorId &&
           p.stopIndex === idx &&
           p.claimedByVehicleId === null &&
           p.direction === mine.direction,
       ),
     });
   }
-  const term = terminusIndex(s.corridorId, mine.direction);
-  const returnDemand = s.pings.filter(
+  const term = terminusIndex(corridorId, mine.direction);
+  const returnDemand = pings.filter(
     (p) =>
-      p.corridorId === s.corridorId &&
+      p.corridorId === corridorId &&
       p.stopIndex === term &&
       p.claimedByVehicleId === null &&
       p.direction !== mine.direction,
