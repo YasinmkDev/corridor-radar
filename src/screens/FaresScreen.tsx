@@ -63,6 +63,7 @@ export function FaresScreen() {
 
       <SegmentedControl<FareView>
         accessibilityLabel="Fare view"
+        tone="light"
         options={[
           { value: 'all', label: 'All 4 Transit Corridors' },
           { value: 'matrix', label: 'Stop-to-Stop Fare Matrix' },

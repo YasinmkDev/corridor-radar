@@ -60,7 +60,7 @@ export function OtpScreen() {
           Enter the 4-digit code sent via {channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} to
           +92 {formatPhone(phone)}
           <Text style={styles.edit} onPress={() => router.back()}>
-            {'  '}Edit Number
+            {'  '}[ Edit Number ]
           </Text>
         </Text>
         {helpNote ? (

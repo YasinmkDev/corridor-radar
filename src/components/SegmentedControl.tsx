@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cloneElement, isValidElement } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, typeScale } from '../theme';
+import { colors, radius, shadows, typeScale } from '../theme';
 
 interface Option<T extends string> {
   value: T;
@@ -18,28 +18,37 @@ interface Props<T extends string> {
   accessibilityLabel?: string;
   /** Compact size for tight controls (welcome language pills). */
   compact?: boolean;
+  /**
+   * 'light' = the fares design's treatment: light container, selected
+   * option as a white pill with ink text. Default keeps the coral-fill
+   * selected grammar used everywhere else.
+   */
+  tone?: 'default' | 'light';
 }
 
-/** Pill segmented control: selected = coral fill, white text. */
+/** Pill segmented control. Default: selected = coral fill, white text. */
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
   accessibilityLabel,
   compact,
+  tone = 'default',
 }: Props<T>) {
+  const light = tone === 'light';
   return (
     <View
       accessibilityLabel={accessibilityLabel}
-      style={styles.container}
+      style={[styles.container, light && styles.containerLight]}
     >
       {options.map((opt) => {
         const selected = opt.value === value;
-        // Tint lucide icons with the label color (white when selected).
+        // Tint lucide icons with the label color (white when selected,
+        // ink when selected on the light tone).
         const iconNode =
           opt.icon && isValidElement(opt.icon)
             ? cloneElement(opt.icon, {
-                color: selected ? colors.white : colors.ink,
+                color: selected ? (light ? colors.ink : colors.white) : colors.ink,
               } as Partial<unknown>)
             : opt.icon;
         return (
@@ -52,11 +61,18 @@ export function SegmentedControl<T extends string>({
             style={[
               styles.option,
               compact && styles.optionCompact,
-              selected && styles.optionSelected,
+              selected && (light ? styles.optionSelectedLight : styles.optionSelected),
             ]}
           >
             {iconNode}
-            <Text style={[styles.label, selected && styles.labelSelected]}>{opt.label}</Text>
+            <Text
+              style={[
+                styles.label,
+                selected && (light ? styles.labelSelectedLight : styles.labelSelected),
+              ]}
+            >
+              {opt.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -74,6 +90,10 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 4,
   },
+  containerLight: {
+    backgroundColor: colors.surface,
+    borderColor: 'transparent',
+  },
   option: {
     flex: 1,
     flexDirection: 'row',
@@ -85,7 +105,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   optionSelected: { backgroundColor: colors.primary },
+  optionSelectedLight: { backgroundColor: colors.white, ...shadows.card },
   optionCompact: { minHeight: 36, paddingHorizontal: 4 },
   label: { ...typeScale.labelMd, color: colors.ink, textAlign: 'center' },
   labelSelected: { color: colors.white },
+  labelSelectedLight: { color: colors.ink },
 });

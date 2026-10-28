@@ -5,6 +5,7 @@ import { PersonStanding, Van } from 'lucide-react-native';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { Chip } from '../components/Chip';
 import { RoleCard } from '../components/RoleCard';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { TrustBar } from '../components/TrustBar';
@@ -29,7 +30,7 @@ export function WelcomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.title}>Swat Raah</Text>
-          <Text style={styles.headerSub}>Live Road &amp; Seat Radar</Text>
+          <Chip label="Live Road & Seat Radar" variant="apricot" />
         </View>
         <View style={styles.langWrap}>
           <SegmentedControl<Language>
@@ -103,7 +104,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   headerText: { gap: 2, flexShrink: 1 },
   title: { ...typeScale.headlineMd, color: colors.primaryDeep },
-  headerSub: { ...typeScale.bodySm, color: colors.inkSecondary },
   langWrap: { width: 168 },
   questionWrap: { gap: 8 },
   question: { ...typeScale.headlineMd, color: colors.ink },

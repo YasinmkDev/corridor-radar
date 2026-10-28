@@ -495,6 +495,15 @@ function LockedView({
   const prevStop =
     prevIndex >= 0 && prevIndex < corridor.stops.length ? corridor.stops[prevIndex] : null;
 
+  // Horizontal timeline geometry: node centres are (i + 0.5) / n of the
+  // row width. The travelled segment runs previous → driver, the
+  // upcoming segment driver → my stop.
+  const nodeCount = prevStop ? 3 : 2;
+  const driverIndex = prevStop ? 1 : 0;
+  const slotPct = 100 / nodeCount;
+  const firstCenterPct = 0.5 * slotPct;
+  const driverCenterPct = (driverIndex + 0.5) * slotPct;
+
   return (
     <>
       <TopBar
@@ -530,7 +539,28 @@ function LockedView({
 
       <Card>
         <View style={styles.hTimeline}>
-          <View style={styles.hLine} />
+          {/*
+            Design's two-tone connector: coral for the travelled segment
+            (previous stop → driver) and pale for the upcoming segment
+            (driver → my stop).
+          */}
+          {prevStop ? (
+            <View
+              style={[
+                styles.hLineTraveled,
+                {
+                  left: `${firstCenterPct}%`,
+                  width: `${driverCenterPct - firstCenterPct}%`,
+                },
+              ]}
+            />
+          ) : null}
+          <View
+            style={[
+              styles.hLineUpcoming,
+              { left: `${driverCenterPct}%`, width: `${slotPct}%` },
+            ]}
+          />
           {prevStop ? (
             <View style={styles.hNode}>
               <View style={styles.hNodePassed}>
@@ -699,7 +729,17 @@ const styles = StyleSheet.create({
   timelineItem: { flexDirection: 'row', gap: 12 },
   dotCol: { alignItems: 'center', width: 20 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.primary, marginTop: 4 },
-  timelineLine: { flex: 1, width: 2, backgroundColor: colors.cardBorder, minHeight: 12 },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: colors.cardBorder,
+    minHeight: 12,
+    // Bridge the 12px gap between timeline rows (the ScrollView content
+    // gap) so the spine runs continuously from dot to dot, like the
+    // picker's StopRow connector. Without this the spine breaks between
+    // cards — the design shows one unbroken spine.
+    marginBottom: -12,
+  },
   timelineBody: { flex: 1, gap: 8 },
   nodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   nodeText: { ...typeScale.labelLg, color: colors.ink, flex: 1 },
@@ -759,11 +799,15 @@ const styles = StyleSheet.create({
   handshakeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 4 },
   handshakeText: { ...typeScale.bodySm, color: colors.inkSecondary, flex: 1 },
   hTimeline: { flexDirection: 'row', position: 'relative', paddingTop: 8 },
-  hLine: {
+  hLineTraveled: {
     position: 'absolute',
-    top: 28,
-    left: 24,
-    right: 24,
+    top: 27,
+    height: 2,
+    backgroundColor: colors.primary,
+  },
+  hLineUpcoming: {
+    position: 'absolute',
+    top: 27,
     height: 2,
     backgroundColor: colors.cardBorder,
   },

@@ -116,6 +116,7 @@ export function AccountScreen() {
         </View>
         <SegmentedControl<Language>
           accessibilityLabel="Language"
+          compact
           options={[
             { value: 'en', label: 'English' },
             { value: 'ps', label: 'پښتو' },

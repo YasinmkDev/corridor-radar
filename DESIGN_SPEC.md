@@ -723,3 +723,45 @@ only inside `useMemo`:
 - `(tabs)/_layout`: no subscription; ticks via `useCorridorStore.getState()`.
 - No component passes a filter/map result or a freshly built object to
   `useCorridorStore`.
+
+### 14.8 Pixel fix round (2026-10-28) — 6 deviations, fixed and re-captured
+
+The parent's independent pixel comparison found 6 small deviations after
+the §14.4 pass. Only these items changed; no copy, number, fare, engine,
+store, or flow changes.
+
+- Radar (screen 5) spine: the vertical line broke in the 12px gap between
+  timeline rows (each row's line spanned only its own height). Fix:
+  `timelineLine` now carries `marginBottom: -12`, bridging the gap exactly
+  like the picker's StopRow connector — the spine runs unbroken from dot
+  to dot and meets the YOU node.
+- Locked (screen 7) connector: the single pale line was replaced with the
+  design's two-tone connector — coral for the travelled segment (previous
+  stop → driver) and pale for the upcoming segment (driver → my stop),
+  placed by node-centre percentages ((i + 0.5) / n) and vertically centred
+  on the 40px nodes (top 27, height 2). With no previous stop the line is
+  a single pale driver → you segment.
+- Welcome (screen 1): "Live Road & Seat Radar" is now an apricot `Chip`
+  pill under the wordmark, not plain text.
+- OTP (screen 3): the sent-to line now reads "[ Edit Number ]" with
+  brackets, as designed.
+- Fares (screen 11) segmented control only: new `SegmentedControl`
+  `tone="light"` — light `surface` container, selected option as a white
+  pill with ink text (plus the theme's soft card shadow). Every other
+  segmented control keeps the coral-fill selected grammar.
+- Picker (screen 6): the selected `StopRow` now renders the design's
+  highlighted card — peach `apricot` background + `cardBorder` border.
+  All rows carry a transparent border of the same width so the dot column
+  never shifts when selection moves.
+- Account (screen 12): the language selector now uses the compact
+  segmented control (36px pills), like welcome's language pills.
+
+Re-capture (web export + Playwright route-proxy, phone width, same flow
+as §14.4; only the 7 affected screens re-shot): `~/workspace/swat-raah-qa/built/`
+`01_welcome`, `03_otp`, `05_radar`, `06_picker`, `07_locked` (+`07b`),
+`11_fares` (+`11b`), `12_account` (+`12b`). Each was opened and compared
+against its `design-refs/` reference: all 6 fixes render as designed.
+No new deviations introduced; the picker's own spine is unchanged and
+still correct. Subscription audit (§14.7) unaffected — this round touched
+no store subscription (styles, JSX layout math, and one text string
+only); the locked timeline percentages are pure layout arithmetic.

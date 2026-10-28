@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, MapPin } from 'lucide-react-native';
 
-import { colors, typeScale } from '../theme';
+import { colors, radius, typeScale } from '../theme';
 import { Chip } from './Chip';
 
 export type StopState =
@@ -48,7 +48,11 @@ export function StopRow({ name, state, meta, hotspot, last, onPress }: Props) {
       accessibilityLabel={name}
       accessibilityState={{ selected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        selected && styles.rowSelected,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.timeline}>
         <View style={[styles.dot, dotStyles[state]]}>
@@ -81,7 +85,19 @@ export function StopRow({ name, state, meta, hotspot, last, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 12, paddingVertical: 8 },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    // Transparent border on every row so the selected card does not
+    // shift the dot column when its border appears.
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: radius.card,
+  },
+  // Design's highlighted selected card: peach background + border.
+  rowSelected: { backgroundColor: colors.apricot, borderColor: colors.cardBorder },
   pressed: { opacity: 0.65 },
   timeline: { alignItems: 'center', width: 20 },
   dot: {
