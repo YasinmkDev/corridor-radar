@@ -17,6 +17,8 @@ interface Props {
   onRaiseHand: () => void;
   onCancelHand: () => void;
   onCompleteTrip: () => void;
+  /** Night sheet theme (passenger night mode). Banner tints stay light for readability. */
+  dark: boolean;
 }
 
 export function PassengerBar({
@@ -30,22 +32,29 @@ export function PassengerBar({
   onRaiseHand,
   onCancelHand,
   onCompleteTrip,
+  dark,
 }: Props) {
   const nowMs = useCorridorStore((s) => s.nowMs);
+  const sheetBg = dark ? colors.sheetNight : colors.card;
+  const hairline = dark ? colors.nightHairline : colors.hairline;
+  const ink = dark ? colors.nightText : colors.ink;
+  const secondary = dark ? colors.nightSecondary : colors.inkSecondary;
+  const lockedTitleColor = dark ? colors.emeraldLight : colors.emeraldText;
+  const radarTitleColor = dark ? colors.amberBright : colors.amberText;
 
   if (myPing && claimingVehicle) {
     const eta = etaToStop(claimingVehicle, myPing.stopIndex);
     return (
-      <View style={[styles.sheet, styles.lockedSheet]}>
-        <Text style={[styles.lockedTitle, { color: colors.emeraldText }]}>
+      <View style={[styles.sheet, styles.lockedSheet, { backgroundColor: sheetBg, borderTopColor: hairline }]}>
+        <Text style={[styles.lockedTitle, { color: lockedTitleColor }]}>
           Ride Locked! · Sawari Pakki
         </Text>
-        <Text style={styles.lockedBody}>
+        <Text style={[styles.lockedBody, { color: ink }]}>
           Ustad {claimingVehicle.driverName.replace(/^Ustad /, '')} ({claimingVehicle.vehicleType})
           is holding {myPing.passengerCount} seat{myPing.passengerCount > 1 ? 's' : ''} for you
           {eta === null ? ' — on the way' : eta === 0 ? ' — arriving now' : ` — arriving in ~${eta} mins`}
         </Text>
-        <Text style={styles.lockedMeta}>
+        <Text style={[styles.lockedMeta, { color: secondary }]}>
           Plate {claimingVehicle.plateNumber}
           {claimingVehicle.verifiedAdda ? ' · Verified Adda' : ''} · {stopName}
         </Text>
@@ -63,8 +72,8 @@ export function PassengerBar({
           onPress={() => { tick(); onCancelHand(); }}
           style={({ pressed }) => [styles.cancelRow, pressed && styles.pressed]}
         >
-          <X size={16} color={colors.inkSecondary} />
-          <Text style={styles.cancelText}>Cancel hold</Text>
+          <X size={16} color={secondary} />
+          <Text style={[styles.cancelText, { color: secondary }]}>Cancel hold</Text>
         </Pressable>
       </View>
     );
@@ -72,16 +81,16 @@ export function PassengerBar({
 
   if (myPing) {
     return (
-      <View style={[styles.sheet, styles.radarSheet]}>
+      <View style={[styles.sheet, styles.radarSheet, { backgroundColor: sheetBg, borderTopColor: hairline }]}>
         <View style={styles.radarHeader}>
-          <Text style={[styles.radarTitle, { color: colors.amberText }]}>
+          <Text style={[styles.radarTitle, { color: radarTitleColor }]}>
             Radar active · Hath Uthao
           </Text>
-          <Text style={[styles.radarMeta, { color: colors.inkSecondary }]}>
+          <Text style={[styles.radarMeta, { color: secondary }]}>
             Expires in {minutesLeft(myPing.expiresAt, nowMs)} min
           </Text>
         </View>
-        <Text style={styles.radarBody}>
+        <Text style={[styles.radarBody, { color: ink }]}>
           Drivers ahead can see you at {stopName}: {myPing.passengerCount} seat
           {myPing.passengerCount > 1 ? 's' : ''}
           {myPing.needsFamilySeat ? ' · Family / Ladies Seat needed' : ''}. Waiting for an Ustad to
@@ -93,16 +102,16 @@ export function PassengerBar({
           onPress={() => { tick(); onCancelHand(); }}
           style={({ pressed }) => [styles.cancelRow, pressed && styles.pressed]}
         >
-          <X size={16} color={colors.inkSecondary} />
-          <Text style={styles.cancelText}>Lower hand</Text>
+          <X size={16} color={secondary} />
+          <Text style={[styles.cancelText, { color: secondary }]}>Lower hand</Text>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <View style={styles.sheet}>
-      <Text style={styles.label}>How many seats? · Kitni Sawari?</Text>
+    <View style={[styles.sheet, { backgroundColor: sheetBg, borderTopColor: hairline }]}>
+      <Text style={[styles.label, { color: ink }]}>How many seats? · Kitni Sawari?</Text>
       <View style={styles.row}>
         {([1, 2, 3] as const).map((n) => (
           <Pressable
@@ -112,11 +121,12 @@ export function PassengerBar({
             onPress={() => { tick(); onSeatCount(n); }}
             style={({ pressed }) => [
               styles.seatPill,
+              { borderColor: hairline },
               seatCount === n && styles.seatPillActive,
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.seatText, seatCount === n && styles.seatTextActive]}>
+            <Text style={[styles.seatText, { color: ink }, seatCount === n && styles.seatTextActive]}>
               {n === 3 ? '3+' : `${n}`}
             </Text>
           </Pressable>
@@ -127,12 +137,13 @@ export function PassengerBar({
           onPress={() => { tick(); onFamilySeat(!needsFamilySeat); }}
           style={({ pressed }) => [
             styles.familyPill,
+            { borderColor: hairline },
             needsFamilySeat && styles.familyPillActive,
             pressed && styles.pressed,
           ]}
         >
           <Text
-            style={[styles.familyText, needsFamilySeat && styles.familyTextActive]}
+            style={[styles.familyText, { color: ink }, needsFamilySeat && styles.familyTextActive]}
           >
             Family / Ladies Seat
           </Text>
@@ -147,7 +158,7 @@ export function PassengerBar({
         <Hand size={22} color={colors.white} />
         <Text style={styles.raiseText}>Raise Hand at {stopName}</Text>
       </Pressable>
-      <Text style={styles.hint}>Hath Uthao · No typing needed. Drivers ahead will see you.</Text>
+      <Text style={[styles.hint, { color: secondary }]}>Hath Uthao · No typing needed. Drivers ahead will see you.</Text>
     </View>
   );
 }

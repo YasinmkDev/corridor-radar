@@ -3,13 +3,17 @@
 A unified dual-mode React Native (Expo SDK 57, TypeScript) app for shared local
 transport in Swat, KPK, Pakistan. One app, two modes, one live corridor state:
 
-- **Passenger Mode ("Spot & Hold Your Ride")** — see approaching vehicles with
-  ETAs, seat counts, and Family/Ladies Seat availability on a vertical corridor
-  timeline, then raise your hand (**Hath Uthao**) at your stop.
-- **Driver Cockpit ("Zero-Blindness Road Radar")** — see waiting passengers at
-  the next 3 stops plus return demand at the final stand, hold them with one
-  tap, adjust empty seats with giant steppers, spot roadside passengers for the
-  driver behind you, and broadcast 1-tap road alerts.
+- **Passenger Mode ("Spot & Hold Your Ride")** — a schematic corridor map
+  (stops spaced by kilometres, not to geographic scale) with approaching
+  vehicle markers that glide along the route, ETAs, seat counts, and
+  Family/Ladies Seat availability, then raise your hand (**Hath Uthao**) at
+  your stop. Tap any stop node on the map to stand there; tap a vehicle
+  marker for its trust card.
+- **Driver Cockpit ("Zero-Blindness Road Radar")** — a horizontal map strip
+  showing waiting passengers at the next 3 stops plus return demand at the
+  final stand, with a per-demand **I'M COMING** Claim row for each, giant seat
+  steppers, spot roadside passengers for the driver behind you, and broadcast
+  1-tap road alerts.
 
 No Google Maps, no Mapbox, no paid APIs, no backend, no GPS. All data is
 simulated locally so the full passenger→driver handshake can be tested on one
@@ -35,7 +39,7 @@ No native build, no dev-client build, no account needed.
 Useful commands:
 
 ```bash
-npx tsc --noEmit   # typecheck
+node --stack-size=8000 ./node_modules/typescript/bin/tsc --noEmit   # typecheck
 npx eslint .       # lint
 npx expo-doctor    # dependency/config diagnosis
 npx expo export    # static bundle export
@@ -44,11 +48,13 @@ npx expo export    # static bundle export
 ## How to test the passenger → driver handshake
 
 1. Stay in **Passenger Mode** on the Mingora ⇄ Matta corridor.
-2. Pick **Kabal** in the stop pills (or keep the default) and tap
-   **Raise Hand at Kabal Chowk**. The bottom bar becomes an amber radar card.
-3. Switch to **Driver Cockpit** with the top pill. The Forward Road Radar shows
-   Kabal Chowk glowing amber with your waiting passengers.
-4. Tap **I'M COMING — HOLD PASSENGERS**. The radar confirms you are holding seats.
+2. Tap **Kabal Chowk** on the map (or keep the default standing stop) and tap
+   **Raise Hand at Kabal Chowk**. The bottom bar becomes an amber radar card,
+   and your stop node gains an amber demand ring on the map.
+3. Switch to **Driver Cockpit** with the top pill. The map strip shows amber
+   demand at Kabal Chowk, with a matching Claim row below it.
+4. Tap **I'M COMING** on the Kabal row. The cockpit confirms you are holding
+   seats for Kabal Chowk.
 5. Switch back to **Passenger Mode**. The bottom bar now shows the green
    **Ride Locked!** card: Ustad Gul (White Fielder) holding your seats, with an
    ETA.
@@ -63,7 +69,7 @@ Other things to try:
 - **Spot Sawari on Road:** drops an amber "Spotted on road" pin at your current
   stop for the driver behind you.
 - **Road Alert:** tap Landslide/Block, Traffic Jam, or Mechanic SOS to pin a
-  structured alert to your current stop (visible on the timeline).
+  structured alert to your current stop (visible as a red badge on the map).
 - **Corridor/direction switching:** state is kept per corridor, so switching
   corridors never loses the other corridor's vehicles, pings, or standing stop.
 - **Live ticks:** other vehicles advance half a stop every 4 seconds and flip
@@ -86,21 +92,21 @@ Other things to try:
 src/
   app/
     _layout.tsx        # Expo Router root (Stack, SafeArea, StatusBar)
-    index.tsx          # Main screen: header, mode switcher, timeline, bottom bar
+    index.tsx          # Main screen: header card, map, bottom sheet / driver scroll
   components/
-    ModeSwitcher.tsx       # Passenger / Driver segmented pill
-    CorridorSelector.tsx   # Corridor + direction pills
-    StopPills.tsx          # Horizontal stop selector
-    CorridorTimeline.tsx   # Vertical 1D corridor track
+    MapHeader.tsx          # Corridor chips + day/night toggle + mode switch
+    RouteMap.tsx           # Schematic km-scaled corridor map (vertical + strip)
     VehicleCard.tsx        # Trust card (plate, Verified Adda, seats, ETA)
     PassengerBar.tsx       # Hath Uthao bar, radar state, Ride Locked card
-    DriverCockpit.tsx      # Seat deck, forward radar, claim, brotherhood footer
+    DriverCockpit.tsx      # Seat deck, map strip, Claim rows, brotherhood footer
   store/
     useCorridorStore.ts    # Zustand store + tick engine + selectors + ETA math
   data/
     seed.ts                # Corridors, seed vehicles, seed pings
   lib/
     haptics.ts             # Selection ticks + success notifications only
+    mapGeometry.ts         # Pure km-scaling / fit / lane-offset helpers
+    stopNames.ts           # Short stop names for the driver strip
   theme.ts                 # Color tokens, type scale, touch targets
   types.ts                 # Corridor / Vehicle / Ping / Alert types
 ```
@@ -122,5 +128,7 @@ src/
   before any real-world use.
 - **No Urdu script:** micro-copy uses Roman Urdu/Pashto terms in Latin script
   only, so there are no font or text-shaping dependencies.
-- **Design:** flat UI only — no gradients, no glow/blur effects. The brief's
-  "glowing track" is implemented as solid amber highlights.
+- **Design:** flat UI only — no gradients, no glow/blur effects. The map is a
+  schematic drawn in-app (react-native-svg + native marker overlays), not a
+  geographic map: stops are spaced by kilometres, never to geographic scale,
+  and the canvas says so.

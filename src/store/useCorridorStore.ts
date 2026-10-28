@@ -92,7 +92,8 @@ interface CorridorState {
   dismissExpiredNotice: () => void;
   /** Re-raise the expired hand at its original stop, corridor, and direction. */
   raiseAgainFromNotice: () => void;
-  claimNextPing: () => string | null;
+  /** Claim one specific waiting ping (per-row Claim in the driver cockpit). */
+  claimPing: (pingId: string) => boolean;
   adjustMySeats: (delta: number) => void;
   toggleMyFamilySeat: () => void;
   advanceMyVehicle: () => void;
@@ -319,32 +320,14 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
       };
     }),
 
-  claimNextPing: () => {
+  claimPing: (pingId) => {
     const s = get();
     const mine = s.vehicles.find((v) => v.corridorId === s.corridorId && v.isMine);
-    if (!mine) return null;
-    const stops = corridorById(s.corridorId).stops;
-    const step = mine.direction === 'UP' ? 1 : -1;
-    const ahead: number[] = [];
-    for (let i = 1; i <= 3; i++) {
-      const idx = mine.currentStopIndex + step * i;
-      if (idx >= 0 && idx < stops.length) ahead.push(idx);
-    }
-    const term = terminusIndex(s.corridorId, mine.direction);
-    const candidates = s.pings.filter(
-      (p) =>
-        p.corridorId === s.corridorId &&
-        p.claimedByVehicleId === null &&
-        ((ahead.includes(p.stopIndex) && p.direction === mine.direction) ||
-          (p.stopIndex === term && p.direction !== mine.direction)),
+    if (!mine) return false;
+    const target = s.pings.find(
+      (p) => p.id === pingId && p.corridorId === s.corridorId && p.claimedByVehicleId === null,
     );
-    if (candidates.length === 0) return null;
-    candidates.sort((a, b) => {
-      const da = Math.abs(a.stopIndex - mine.currentStopIndex);
-      const db = Math.abs(b.stopIndex - mine.currentStopIndex);
-      return da - db || a.createdAt - b.createdAt;
-    });
-    const target = candidates[0];
+    if (!target) return false;
     set((state) => ({
       pings: state.pings.map((p) =>
         p.id === target.id ? { ...p, claimedByVehicleId: mine.id } : p,
@@ -355,7 +338,7 @@ export const useCorridorStore = create<CorridorState>()((set, get) => ({
           : v,
       ),
     }));
-    return target.id;
+    return true;
   },
 
   adjustMySeats: (delta) =>

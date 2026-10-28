@@ -40,6 +40,34 @@ export const colors = {
   dangerText: '#7F1D1D',
   /** Light red text and icons on dark surfaces. AAA on nightCard. */
   dangerLight: '#FCA5A5',
+
+  /* ---- Schematic map canvas (2026-10-28 map rebuild) ---- */
+  /** Warm paper-grey day map canvas (research starting token). */
+  mapCanvasDay: '#F2EFE9',
+  /** Night map canvas. Same geometry, muted fills, brighter text. */
+  mapCanvasNight: '#12151C',
+  /** Faint grid stroke on day canvas. */
+  mapGridDay: '#D8D2C7',
+  /** Faint grid stroke on night canvas. */
+  mapGridNight: '#232A38',
+  /** Untravelled track on day canvas. */
+  mapTrackDay: '#D9D2C6',
+  /** Untravelled track on night canvas. */
+  mapTrackNight: '#2A3140',
+  /** Sheet surface on night map (lighter than canvas = elevation). */
+  sheetNight: '#1C212E',
+  /**
+   * Corridor identity colours. Outside the reserved status hues (seats
+   * green, demand amber, family indigo) and used ONLY for the route line
+   * + corridor chip, always paired with letter + name. Measured: cyan-700
+   * 4.67:1 on paper / 5.36:1 white-on-fill (AA); rose-700 5.26:1 on paper /
+   * 6.04:1 white-on-fill (AA). On night canvas they pass the 3:1 non-text
+   * floor only (3.41 / 3.03), so the night line renders 1 unit thicker.
+   */
+  corridorA: '#0E7490',
+  corridorB: '#BE185D',
+  /** Seats badge fill on vehicle markers. White text on it is 5.02:1 (AA). */
+  seatsBadge: '#15803D',
 };
 
 export const typeScale = {
@@ -61,6 +89,18 @@ export const typeScale = {
    * Nothing else uses this size.
    */
   loud: { fontSize: 48, lineHeight: 56, fontWeight: '800' as const },
+  /** Map stop name: the largest text drawn on the canvas. */
+  mapLabel: { fontSize: 15, lineHeight: 20, fontWeight: '600' as const },
+  /** Map secondary line: km + state under a stop name. */
+  mapMeta: { fontSize: 12, lineHeight: 16, fontWeight: '500' as const },
+  /** Map micro-labels: badges, NEXT markers, ETA pills, seats badges. */
+  mapMicro: { fontSize: 11, lineHeight: 14, fontWeight: '700' as const },
+  /** Map micro-tags: YOU tag, family diamond, badge letters. */
+  mapTag: { fontSize: 10, lineHeight: 14, fontWeight: '700' as const },
+  /** Map ruler numbers: kilometres along the track edge. */
+  mapRuler: { fontSize: 10, lineHeight: 14, fontWeight: '500' as const },
+  /** Sheet ETA headline: the largest figure on the sheet. */
+  etaHeadline: { fontSize: 20, lineHeight: 28, fontWeight: '800' as const },
 };
 
 /** Minimum touch targets: 56px everywhere, 64px for driver primary actions. */
@@ -74,11 +114,13 @@ export const touch = {
  * - card (16): content cards and large primary action blocks.
  * - pill (999): selectors, mode switcher, toggle pills.
  * - chip (10): small data chips and badges.
+ * - sheet (24): bottom sheet top corners only.
  */
 export const radius = {
   card: 16,
   pill: 999,
   chip: 10,
+  sheet: 24,
 };
 
 /**

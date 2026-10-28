@@ -375,3 +375,167 @@ Re-raise after expiry: 1. Trip complete: 1. Nothing exceeds 3 taps.
   (greps clean); all applicable states designed (§9, W-2 waiver); targets
   ≥56px; state never by color alone; icon buttons labelled; no dark patterns;
   no neon/gradient/glass styling anywhere.
+
+## 13. Map rebuild (2026-10-28) — schematic corridor map replaces the timeline
+
+Reference: `~/workspace/research_notes/swat-raah-map-design-20261028-1112/report.md`
+(research across Google Maps, Apple Maps, Citymapper, Moovit, Uber, Lyft; §6 is
+the build spec). Its pixel values are STARTING TOKENS from secondary sources,
+not official platform specs — nothing here is claimed to come from Google or
+Apple, and nothing is claimed about Grab/Careem/Bolt (unconfirmed).
+
+### What changed
+
+- **New `src/components/RouteMap.tsx`** — the hero visual, both orientations.
+  Vertical passenger map (viewBox 360×560, spine x=84, top padding 32, track
+  440) and horizontal driver strip (viewBox 400×112, spine y=56, left padding
+  16, track 368). One straight spine scaled by kilometres:
+  `y = topPadding + km/totalKm × trackLength` — NOT equal spacing. A km ruler
+  (0 / mid / total ticks) and the on-canvas label "Schematic · stops spaced by
+  kilometres · simulated" say so plainly. Static SVG layer is `React.memo`;
+  ~35–45 SVG elements; no SVG filters, gradients, shadows, or glow.
+- **New `src/components/MapHeader.tsx`** — floating header card: corridor
+  chips "A · Matta" / "B · Bahrain", day/night toggle (passenger only), and the
+  Passenger|Driver segmented switch. Driver mode is always night, so the toggle
+  hides there.
+- **New `src/lib/mapGeometry.ts`** — pure helpers, no React, no store:
+  `vehicleKm` (continuous km from stop index + progress), `kmFraction`,
+  `fitRect` (meet/mid fit math mirroring preserveAspectRatio, so native
+  overlays land exactly on SVG geometry), `laneOffsets` (sideways offset when
+  vehicles share a segment), `nextStopIndexFor`, `passedIndices`, `etaDetail`.
+- **New `src/lib/stopNames.ts`** — `SHORT_NAMES` + `shortStopName`, moved
+  verbatim out of the retired StopPills.
+- **Retired:** `CorridorTimeline.tsx`, `StopPills.tsx`, `ModeSwitcher.tsx`,
+  `CorridorSelector.tsx`. The map nodes ARE the stop selector now (tap a node
+  to stand there); the header card carries corridor/mode switching. No dead
+  code left behind (verified by grep).
+- **`src/app/index.tsx`** — flex-column layout: header zone / map flex:1 /
+  bottom sheet. The sheet starts COLLAPSED (grabber + ETA headline + fixed
+  `PassengerBar`) so the map stays the hero — the first version let the sheet
+  grow to its 55% cap and starved the map to ~170px on a phone-sized screen
+  (caught on a real web capture, 2026-10-28). Tapping the grabber/ETA row
+  expands it to scrolling details (capped at 55% height); selecting a vehicle
+  marker or a banner appearing (trip-complete, expired hand) auto-expands it.
+  Driver mode: header + scroll + `DriverCockpit`.
+- **`src/components/DriverCockpit.tsx`** — horizontal map strip on top (demand
+  ahead only, stops behind greyed out), then per-demand Claim rows 56 high,
+  nearest first, return-stand demand last. The single big I'M COMING button is
+  gone; each row claims its own ping. Seat deck, family toggle, Next Stop,
+  claimed + Release hold, Spot Sawari, road alerts all kept.
+- **`src/components/PassengerBar.tsx`** — new `dark` prop (night sheet
+  surfaces; banner tints stay light for readability).
+- **`src/store/useCorridorStore.ts`** — `claimNextPing` (claim-nearest) replaced
+  by `claimPing(pingId)` (claim one specific ping, same seat-decrement floor
+  0, returns boolean). Handshake is otherwise unchanged.
+- **`src/app/_layout.tsx`** — root background is now the day map canvas
+  (passenger) / night (driver); the screen itself covers it anyway.
+- **Tokens added (`src/theme.ts`):** mapCanvasDay #F2EFE9, mapCanvasNight
+  #12151C, mapGridDay #D8D2C7, mapGridNight #232A38, mapTrackDay #D9D2C6,
+  mapTrackNight #2A3140, sheetNight #1C212E, corridorA #0E7490 (cyan-700),
+  corridorB #BE185D (rose-700), seatsBadge #15803D; type entries mapLabel,
+  mapMeta, mapMicro, mapTag, mapRuler, etaHeadline; radius.sheet 24.
+
+### Node, colour, and marker system (as built)
+
+- Passed = small filled node + muted label; upcoming = hollow muted-ring node;
+  next = large white node + corridor ring + slow pulse (1600ms loop, static
+  under reduced motion); selected (standing stop) = large node + ink outline +
+  canvas halo; termini = rounded squares with white inner dot.
+- Demand = amber ring + count badge (never colour alone); family need = indigo
+  diamond with white "F"; road alert = red "!" badge. Behind-greying (strip
+  only): stops behind the driver's vehicle render at 0.3 opacity.
+- Corridor colours are used ONLY for the route line + corridor chip, always
+  paired with letter + name. The line colour NEVER changes with state. Status
+  hues stay reserved: seats green, demand amber, family indigo.
+- Measured contrast (relative-luminance script, 2026-10-28): cyan-700 on paper
+  4.67, rose-700 on paper 5.26, white-on-cyan-700 5.36, white-on-rose-700 6.04,
+  seats green on white 5.02 (all AA); on night canvas the corridor lines pass
+  only the 3:1 non-text floor (3.41 / 3.03), so the night line renders 1 unit
+  thicker (11 vs 10).
+- Vehicle markers are native views (not SVG): white pill, ink outline, vehicle
+  glyph (Hiace Coach→Bus, Suzuki Carry→Truck, Fielder→Car), corridor-coloured
+  nose triangle rotated to travel direction, green seats pill below ("Full" in
+  grey at 0 seats, never red), family diamond on the pill. Lead marker carries
+  an ETA pill above it; the driver's own marker is an inverted ink pill on the
+  strip. Markers GLIDE: on each target change the transform animates from the
+  previous target over 1200ms (0ms under reduced motion); only the transform
+  animates, never fill/stroke. Selected marker gets a 2.5px border.
+- ETA: map pill ("4 min" / "Arriving now") + sheet headline ("Arrives in ~4
+  min" + "2 stops · 5 km away · Towards [end stop]"). Always "~" for simulated
+  estimates, always paired with stops/km.
+
+### Layout deviations from the research spec, and why
+
+- **Flex column instead of absolute overlay positioning.** The spec's floating
+  header + sheet over the canvas assumed a fixed sheet height in viewBox units;
+  that breaks across screen sizes (sheet height is content-driven, viewBox
+  units are not). The built layout stacks header / map / sheet in one column
+  with the root background set to the canvas colour, so the visual result is
+  identical (header pill and rounded sheet corners sit on seamless canvas,
+  nothing hides behind chrome) without the size mismatch.
+- **No direction chevron on the route line.** Direction is carried by the sheet
+  header text ("Towards [end stop]"), the direction pills, and the destination
+  line in the header card — a spec-sanctioned alternative that avoids a
+  moving chevron competing with the gliding markers.
+- **Strip markers glide too** (same native overlay system as vertical), rather
+  than snapping, so there is exactly one marker system to maintain.
+
+### Part 8 audit for the rebuild
+
+| Check | Result |
+| --- | --- |
+| Token sheet; no orphan values | PASS — greps: zero hex outside theme.ts; all type sizes are theme entries (mapLabel/mapMeta/mapMicro/mapTag/mapRuler/etaHeadline); spacing values all on the scale except border/stroke geometry (1–3px, exempt) |
+| One accent on primaries/live state | PASS — emeraldAction on primaries/selected; corridor colours only on line + chip |
+| One loud typographic moment | PASS — `loud` still only the driver seat numeral; the ETA headline is title-size (20/800), not loud-size |
+| Radii vocabulary | PASS — card/pill/chip/sheet jobs unchanged |
+| Three button styles maximum | PASS — Primary / Secondary / Tertiary; Claim rows are Primary in compact form |
+| References named | PASS — map research report §6 + §2 benchmarks |
+| One primary verb per first screen | PASS — passenger: Raise Hand; driver: I'M COMING (now per-row, same verb) |
+| Card interiors ≥24px | PASS — banners, VehicleCard, empty card keep 24px; the sheet gutter is 16px, matching the previous screen's scroll gutter |
+| No text touches a card edge | PASS by construction — wrapping text, flex rows, no truncation hacks |
+| All five states per surface | PASS with prior W-2 waiver — map adds selected/lead/demand/alert states; loading/error/offline still N/A (local architecture) |
+| Badges ≤2 per screen | WAIVED as counted (extended) — the map carries demand counts, family diamonds, alert badges, seats badges, and the ETA pill, but every one changes a wait/board/claim decision; none is decorative |
+| No dead controls | PASS — every node, marker, chip, pill, and row acts in place |
+| Core loop in Part 4.2 form | PASS — unchanged loop; claim is now per-row but the same one-tap action |
+| Investment visible/countable/losable + mercy valve | PASS — unchanged (held seats both screens; expiry/cancel; one-tap re-raise) |
+| One engineered peak; designed ending | PASS — Ride Locked peak; Trip complete thank-you ending |
+| Motion within tokens | PASS with note — NEW timed motion ships: marker glide (1200ms, transform-only, one axis) and pulse rings (1600ms loop). Both collapse to static under reduced motion (0ms glide, no pulse loop). Exits (selection clear) are instant |
+| Haptics 6.8 | PASS — selection ticks + success only; stop/marker/direction taps tick, raise/claim/complete succeed |
+| Reduced Motion path verified | PASS — pulse loop skipped, glide duration 0, everything else static |
+| Unverifiable claims labelled | PASS — "~" ETAs, "Schematic · stops spaced by kilometres · simulated" on the canvas, demo fare note, simulated-data footnote |
+
+### Subscription-stability audit (2026-10-28, post-rebuild)
+
+The 2026-10-28 crash guard still holds: every `useCorridorStore` subscription
+takes a raw stable value (scalar, stable object, or raw array) and every
+derived list is built in `useMemo`. Audited subscriptions:
+
+- `index.tsx`: mode, corridorId, direction, selectMyStopIndex (selector
+  returning a number), seatCount, needsFamilySeat, expiredNotice,
+  completedTrip, nowMs, raw vehicles/pings/alerts arrays, selectMyPing
+  (selector returning one object or null); derived vehicles/pings/alerts/
+  approaching all in `useMemo`; all action functions (stable references).
+- `DriverCockpit.tsx`: corridorId, selectMyVehicle (selector returning one
+  vehicle), raw vehicles/pings/alerts arrays, nowMs; derived corridor
+  arrays, radar (`getForwardRadar` in `useMemo`), claim rows, claimedByMe,
+  alertsHere all in `useMemo`; action functions.
+- `PassengerBar.tsx`: nowMs only.
+- `RouteMap.tsx`: no store subscription at all (all data via props).
+- `_layout.tsx`: mode only.
+- No component passes a filter/map result or a freshly built object to
+  `useCorridorStore`. New map derivations (marker fractions, lane offsets,
+  vehicle positions) are computed in `useMemo` from raw props, never from
+  store selectors.
+
+### Tooling note (2026-10-28)
+
+- `react-native-web` was installed (`expo install react-native-web`, SDK 57
+  compatible) because the web export — and the app's own "press `w` for web"
+  path — cannot bundle without it. It changes nothing for Android/iOS builds
+  (verified: Android export still 6.2MB, doctor still 21/21).
+- Plain `npx tsc --noEmit` now crashes the TypeScript checker with
+  "Maximum call stack size exceeded" once react-native-web's types enter the
+  program. This is a checker-recursion quirk, not a code error: with a larger
+  stack the same check passes clean —
+  `node --stack-size=8000 ./node_modules/typescript/bin/tsc --noEmit`.
+  That is the verified typecheck command for this repo from here on.

@@ -11,7 +11,7 @@ export default function RootLayout() {
   const mode = useCorridorStore((s) => s.mode);
   return (
     <GestureHandlerRootView
-      style={[styles.root, { backgroundColor: mode === 'driver' ? colors.night : colors.canvas }]}
+      style={[styles.root, { backgroundColor: mode === 'driver' ? colors.night : colors.mapCanvasDay }]}
     >
       <SafeAreaProvider>
         <StatusBar style={mode === 'driver' ? 'light' : 'dark'} />

@@ -1,18 +1,19 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Car, Eye, Hand, Mountain, Navigation, Wrench } from 'lucide-react-native';
+import { Car, Eye, Mountain, Navigation, Wrench } from 'lucide-react-native';
 
 import { corridorById } from '../data/seed';
 import { success, tick } from '../lib/haptics';
+import { shortStopName } from '../lib/stopNames';
 import { colors, radius, touch, typeScale } from '../theme';
-import type { AlertTag } from '../types';
+import type { AlertTag, Ping } from '../types';
 import {
   getForwardRadar,
   minutesLeft,
   selectMyVehicle,
   useCorridorStore,
 } from '../store/useCorridorStore';
-import { shortStopName } from './StopPills';
+import { RouteMap } from './RouteMap';
 
 const ALERT_TAGS: { tag: AlertTag; icon: typeof Mountain }[] = [
   { tag: 'Landslide/Block', icon: Mountain },
@@ -20,18 +21,52 @@ const ALERT_TAGS: { tag: AlertTag; icon: typeof Mountain }[] = [
   { tag: 'Mechanic SOS', icon: Wrench },
 ];
 
+type ClaimRow = {
+  ping: Ping;
+  stopIndex: number;
+  distanceKm: number | null;
+  isReturn: boolean;
+};
+
 export function DriverCockpit() {
   const corridorId = useCorridorStore((s) => s.corridorId);
   const mine = useCorridorStore(selectMyVehicle);
   // Same rule as HomeScreen: raw state arrays are stable references, and
   // every derived list is memoized from them. Filtering directly inside
   // useCorridorStore returns a new array on every check and loops React.
+  const allVehicles = useCorridorStore((s) => s.vehicles);
   const allPings = useCorridorStore((s) => s.pings);
   const allAlerts = useCorridorStore((s) => s.alerts);
+  const corridorVehicles = useMemo(
+    () => allVehicles.filter((v) => v.corridorId === corridorId),
+    [allVehicles, corridorId],
+  );
+  const corridorPings = useMemo(
+    () => allPings.filter((p) => p.corridorId === corridorId),
+    [allPings, corridorId],
+  );
+  const corridorAlerts = useMemo(
+    () => allAlerts.filter((a) => a.corridorId === corridorId),
+    [allAlerts, corridorId],
+  );
   const radar = useMemo(
     () => getForwardRadar(mine, allPings, corridorId),
     [mine, allPings, corridorId],
   );
+  // Claim rows: nearest claimable demand first, return-stand demand last.
+  // getForwardRadar already returns only unclaimed pings.
+  const claimRows = useMemo<ClaimRow[]>(() => {
+    const rows: ClaimRow[] = [];
+    radar.ahead.forEach((stop) => {
+      stop.pings.forEach((ping) => {
+        rows.push({ ping, stopIndex: stop.stopIndex, distanceKm: stop.distanceKm, isReturn: false });
+      });
+    });
+    radar.returnDemand.forEach((ping) => {
+      rows.push({ ping, stopIndex: ping.stopIndex, distanceKm: null, isReturn: true });
+    });
+    return rows;
+  }, [radar]);
   const claimedByMe = useMemo(
     () => allPings.filter((p) => p.claimedByVehicleId === mine.id),
     [allPings, mine.id],
@@ -44,7 +79,7 @@ export function DriverCockpit() {
   const adjustMySeats = useCorridorStore((s) => s.adjustMySeats);
   const toggleMyFamilySeat = useCorridorStore((s) => s.toggleMyFamilySeat);
   const advanceMyVehicle = useCorridorStore((s) => s.advanceMyVehicle);
-  const claimNextPing = useCorridorStore((s) => s.claimNextPing);
+  const claimPing = useCorridorStore((s) => s.claimPing);
   const releaseHold = useCorridorStore((s) => s.releaseHold);
   const spotSawari = useCorridorStore((s) => s.spotSawari);
   const addRoadAlert = useCorridorStore((s) => s.addRoadAlert);
@@ -57,8 +92,6 @@ export function DriverCockpit() {
   const nextStopName = atTerminus
     ? corridor.stops[mine.currentStopIndex].name
     : corridor.stops[nextIndex].name;
-  const claimable =
-    radar.ahead.some((s) => s.pings.length > 0) || radar.returnDemand.length > 0;
 
   return (
     <View style={styles.wrap}>
@@ -120,57 +153,63 @@ export function DriverCockpit() {
         </Pressable>
       </View>
 
-      {/* Forward road radar */}
+      {/* Forward road radar: map strip + per-demand Claim rows */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Forward Road Radar · No blind spots</Text>
         <Text style={styles.cardMeta}>
-          Going {mine.direction === 'UP' ? `toward ${corridor.to}` : `toward ${corridor.from}`} · Next 3 stops
+          Going {mine.direction === 'UP' ? `toward ${corridor.to}` : `toward ${corridor.from}`} · Stops
+          behind you are greyed out · Amber = waiting passengers
         </Text>
-        {radar.ahead.length === 0 ? (
-          <Text style={styles.muted}>You are at the end of the road. Turn around to head back.</Text>
+        <View style={styles.stripCard}>
+          <RouteMap
+            corridor={corridor}
+            vehicles={corridorVehicles}
+            pings={corridorPings}
+            alerts={corridorAlerts}
+            myStopIndex={-1}
+            selectedStopIndex={null}
+            myVehicleId={mine.id}
+            leadVehicleId={mine.id}
+            etaForLead={null}
+            dark
+            orientation="horizontal"
+            interactive={false}
+            selectedVehicleId={null}
+          />
+        </View>
+        {claimRows.length === 0 ? (
+          <Text style={styles.muted}>
+            No waiting passengers ahead to hold right now. Keep driving — new hands appear on the strip.
+          </Text>
         ) : (
-          radar.ahead.map((stop) => (
-            <View key={stop.stopIndex} style={styles.radarRow}>
-              <View style={styles.radarStop}>
-                <Text style={styles.radarStopName}>{corridor.stops[stop.stopIndex].name}</Text>
-                <Text style={styles.radarKm}>{stop.distanceKm} km ahead</Text>
+          claimRows.map((row) => (
+            <View key={row.ping.id} style={styles.claimRow}>
+              <View style={styles.claimInfo}>
+                <Text style={styles.claimStop}>
+                  {corridor.stops[row.stopIndex].name}
+                  {row.ping.needsFamilySeat ? ' · Family' : ''}
+                </Text>
+                <Text style={styles.claimMeta}>
+                  {row.ping.passengerCount} waiting
+                  {row.isReturn
+                    ? ' · Return trip · Final stand'
+                    : row.distanceKm !== null
+                      ? ` · ${row.distanceKm} km ahead`
+                      : ''}
+                  {' · '}
+                  {minutesLeft(row.ping.expiresAt, nowMs)} min left
+                </Text>
               </View>
-              {stop.pings.length > 0 ? (
-                <View style={styles.amberChip}>
-                  <Text style={styles.amberChipText}>
-                    {stop.pings.reduce((sum, p) => sum + p.passengerCount, 0)} Waiting
-                    {stop.pings.some((p) => p.needsFamilySeat) ? ' · Family' : ''}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.muted}>No one waiting</Text>
-              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Claim ${row.ping.passengerCount} waiting passengers at ${shortStopName(corridor.stops[row.stopIndex].name)}, I am coming`}
+                onPress={() => { if (claimPing(row.ping.id)) success(); }}
+                style={({ pressed }) => [styles.claimRowButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.claimRowButtonText}>I&apos;M COMING</Text>
+              </Pressable>
             </View>
           ))
-        )}
-        {radar.returnDemand.length > 0 ? (
-          <View style={styles.returnCard}>
-            <Text style={styles.returnTitle}>
-              Return demand at {corridor.stops[corridor.stops.length - 1].name} (final stand)
-            </Text>
-            <Text style={styles.returnBody}>
-              {radar.returnDemand.reduce((sum, p) => sum + p.passengerCount, 0)} passengers waiting
-              to come back — your return trip is covered.
-            </Text>
-          </View>
-        ) : null}
-        {claimable ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="I am coming, hold passengers"
-            onPress={() => { if (claimNextPing() !== null) success(); }}
-            style={({ pressed }) => [styles.claimButton, pressed && styles.pressed]}
-          >
-            <Hand size={22} color={colors.white} />
-            <Text style={styles.claimText}>I&apos;M COMING — HOLD PASSENGERS</Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.muted}>No waiting passengers ahead to hold right now.</Text>
         )}
         {claimedByMe.length > 0 ? (
           <>
@@ -228,6 +267,7 @@ export function DriverCockpit() {
           </Text>
         ))}
       </View>
+      <Text style={styles.footnote}>Simulated live data · No GPS, no maps, no backend.</Text>
     </View>
   );
 }
@@ -272,33 +312,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   nextButtonText: { ...typeScale.button, color: colors.white, textAlign: 'center' },
-  radarRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-  },
-  radarStop: { flex: 1 },
-  radarStopName: { ...typeScale.smallBold, color: colors.nightText },
-  radarKm: { ...typeScale.tiny, color: colors.nightSecondary },
-  amberChip: { backgroundColor: colors.amberBright, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 8 },
-  amberChipText: { ...typeScale.smallBold, color: colors.ink },
-  muted: { ...typeScale.small, color: colors.nightSecondary },
-  returnCard: { backgroundColor: colors.night, borderRadius: radius.chip, padding: 12, gap: 4 },
-  returnTitle: { ...typeScale.smallBold, color: colors.nightText },
-  returnBody: { ...typeScale.small, color: colors.nightSecondary },
-  claimButton: {
-    minHeight: touch.driverPrimary,
+  stripCard: { borderRadius: radius.card, overflow: 'hidden' },
+  claimRow: {
+    minHeight: touch.standard,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 12,
-    backgroundColor: colors.emeraldAction,
+    borderWidth: 1,
+    borderColor: colors.nightHairline,
     borderRadius: radius.card,
     paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  claimText: { ...typeScale.button, color: colors.white, textAlign: 'center' },
+  claimInfo: { flex: 1, gap: 2 },
+  claimStop: { ...typeScale.smallBold, color: colors.nightText },
+  claimMeta: { ...typeScale.tiny, color: colors.nightSecondary },
+  claimRowButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    backgroundColor: colors.emeraldAction,
+    borderRadius: radius.pill,
+    paddingHorizontal: 16,
+  },
+  claimRowButtonText: { ...typeScale.smallBold, color: colors.white },
+  muted: { ...typeScale.small, color: colors.nightSecondary },
   holdingText: { ...typeScale.smallBold, color: colors.emeraldLight },
   releaseButton: {
     minHeight: touch.standard,
@@ -336,5 +373,6 @@ const styles = StyleSheet.create({
   },
   alertButtonText: { ...typeScale.tiny, color: colors.nightText, textAlign: 'center' },
   activeAlert: { ...typeScale.smallBold, color: colors.dangerLight },
+  footnote: { ...typeScale.tiny, color: colors.nightSecondary, textAlign: 'center' },
   pressed: { opacity: 0.65 },
 });
