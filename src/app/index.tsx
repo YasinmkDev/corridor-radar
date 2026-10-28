@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DriverCockpit } from '../components/DriverCockpit';
 import { MapHeader } from '../components/MapHeader';
-import { PassengerBar } from '../components/PassengerBar';
+import { PassengerBar, SeatPicker } from '../components/PassengerBar';
 import { RouteMap } from '../components/RouteMap';
 import { VehicleCard } from '../components/VehicleCard';
 import { corridorById } from '../data/seed';
@@ -347,10 +347,18 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
               ) : null}
+              {!myPing ? (
+                <SeatPicker
+                  seatCount={seatCount}
+                  onSeatCount={setSeatCount}
+                  needsFamilySeat={needsFamilySeat}
+                  onFamilySeat={setNeedsFamilySeat}
+                  dark={dark}
+                />
+              ) : null}
               <Text style={[styles.standing, { color: secondary }]}>
                 Standing at: {myStop.name} ({myStop.km} km) · Tap any stop on the map to move.
-              </Text>
-              <View style={styles.directionRow}>
+              </Text>              <View style={styles.directionRow}>
                 <Text style={[styles.directionLabel, { color: secondary }]}>Going toward:</Text>
                 <Pressable
                   accessibilityRole="button"
@@ -442,6 +450,7 @@ export default function HomeScreen() {
                 onCancelHand={cancelHand}
                 onCompleteTrip={completeTrip}
                 dark={dark}
+                compact={!sheetExpanded}
               />
             </View>
           </View>
@@ -461,7 +470,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  headerZone: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 8, gap: 8 },
+  headerZone: { paddingHorizontal: 12, paddingTop: 6, paddingBottom: 6, gap: 6 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { ...typeScale.display },
   liveBadge: {
@@ -490,7 +499,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 4,
   },
-  sheetToggle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  sheetToggle: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   etaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   etaText: { flex: 1, gap: 4 },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

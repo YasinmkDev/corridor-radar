@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.card,
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chips: { flexDirection: 'row', gap: 8 },
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  seg: { flexDirection: 'row', borderRadius: radius.pill, padding: 4, marginTop: 12 },
+  seg: { flexDirection: 'row', borderRadius: radius.pill, padding: 4, marginTop: 8 },
   segBtn: {
     flex: 1,
     height: 32,
@@ -163,6 +163,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segText: { ...typeScale.smallBold },
-  destination: { ...typeScale.small, marginTop: 8 },
-  activeBar: { height: 3, borderRadius: 2, marginTop: 8 },
+  destination: { ...typeScale.small, marginTop: 4 },
+  activeBar: { height: 3, borderRadius: 2, marginTop: 4 },
 });

@@ -19,6 +19,70 @@ interface Props {
   onCompleteTrip: () => void;
   /** Night sheet theme (passenger night mode). Banner tints stay light for readability. */
   dark: boolean;
+  /** Collapsed sheet: raise action only; the seat picker lives in the expanded sheet. */
+  compact?: boolean;
+}
+
+interface SeatPickerProps {
+  seatCount: 1 | 2 | 3;
+  onSeatCount: (n: 1 | 2 | 3) => void;
+  needsFamilySeat: boolean;
+  onFamilySeat: (v: boolean) => void;
+  dark: boolean;
+}
+
+/** Seat stepper + family toggle, shared by the bar and the expanded sheet. */
+export function SeatPicker({
+  seatCount,
+  onSeatCount,
+  needsFamilySeat,
+  onFamilySeat,
+  dark,
+}: SeatPickerProps) {
+  const hairline = dark ? colors.nightHairline : colors.hairline;
+  const ink = dark ? colors.nightText : colors.ink;
+  return (
+    <View style={styles.pickerWrap}>
+      <Text style={[styles.label, { color: ink }]}>How many seats? · Kitni Sawari?</Text>
+      <View style={styles.row}>
+        {([1, 2, 3] as const).map((n) => (
+          <Pressable
+            key={n}
+            accessibilityRole="button"
+            accessibilityLabel={n === 3 ? '3 or more seats' : `${n} seat${n > 1 ? 's' : ''}`}
+            onPress={() => { tick(); onSeatCount(n); }}
+            style={({ pressed }) => [
+              styles.seatPill,
+              { borderColor: hairline },
+              seatCount === n && styles.seatPillActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.seatText, { color: ink }, seatCount === n && styles.seatTextActive]}>
+              {n === 3 ? '3+' : `${n}`}
+            </Text>
+          </Pressable>
+        ))}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Family or ladies seat needed, ${needsFamilySeat ? 'on' : 'off'}`}
+          onPress={() => { tick(); onFamilySeat(!needsFamilySeat); }}
+          style={({ pressed }) => [
+            styles.familyPill,
+            { borderColor: hairline },
+            needsFamilySeat && styles.familyPillActive,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text
+            style={[styles.familyText, { color: ink }, needsFamilySeat && styles.familyTextActive]}
+          >
+            Family / Ladies Seat
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 export function PassengerBar({
@@ -33,6 +97,7 @@ export function PassengerBar({
   onCancelHand,
   onCompleteTrip,
   dark,
+  compact = false,
 }: Props) {
   const nowMs = useCorridorStore((s) => s.nowMs);
   const sheetBg = dark ? colors.sheetNight : colors.card;
@@ -110,45 +175,22 @@ export function PassengerBar({
   }
 
   return (
-    <View style={[styles.sheet, { backgroundColor: sheetBg, borderTopColor: hairline }]}>
-      <Text style={[styles.label, { color: ink }]}>How many seats? · Kitni Sawari?</Text>
-      <View style={styles.row}>
-        {([1, 2, 3] as const).map((n) => (
-          <Pressable
-            key={n}
-            accessibilityRole="button"
-            accessibilityLabel={n === 3 ? '3 or more seats' : `${n} seat${n > 1 ? 's' : ''}`}
-            onPress={() => { tick(); onSeatCount(n); }}
-            style={({ pressed }) => [
-              styles.seatPill,
-              { borderColor: hairline },
-              seatCount === n && styles.seatPillActive,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={[styles.seatText, { color: ink }, seatCount === n && styles.seatTextActive]}>
-              {n === 3 ? '3+' : `${n}`}
-            </Text>
-          </Pressable>
-        ))}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Family or ladies seat needed, ${needsFamilySeat ? 'on' : 'off'}`}
-          onPress={() => { tick(); onFamilySeat(!needsFamilySeat); }}
-          style={({ pressed }) => [
-            styles.familyPill,
-            { borderColor: hairline },
-            needsFamilySeat && styles.familyPillActive,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text
-            style={[styles.familyText, { color: ink }, needsFamilySeat && styles.familyTextActive]}
-          >
-            Family / Ladies Seat
-          </Text>
-        </Pressable>
-      </View>
+    <View
+      style={[
+        styles.sheet,
+        compact && styles.sheetCompact,
+        { backgroundColor: sheetBg, borderTopColor: hairline },
+      ]}
+    >
+      {!compact ? (
+        <SeatPicker
+          seatCount={seatCount}
+          onSeatCount={onSeatCount}
+          needsFamilySeat={needsFamilySeat}
+          onFamilySeat={onFamilySeat}
+          dark={dark}
+        />
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Raise hand at ${stopName}`}
@@ -173,6 +215,9 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 12,
   },
+  /* Collapsed sheet: raise action + hint only, so the map stays the hero. */
+  sheetCompact: { paddingTop: 12, paddingBottom: 12, gap: 8 },
+  pickerWrap: { gap: 12 },
   pressed: { opacity: 0.65 },
   label: { ...typeScale.smallBold, color: colors.ink },
   row: { flexDirection: 'row', gap: 8 },

@@ -539,3 +539,31 @@ derived list is built in `useMemo`. Audited subscriptions:
   stack the same check passes clean —
   `node --stack-size=8000 ./node_modules/typescript/bin/tsc --noEmit`.
   That is the verified typecheck command for this repo from here on.
+
+### Map de-collision fix (2026-10-28)
+
+- Default passenger view: vehicle markers and stop labels collided mid-spine
+  (seed vehicles cluster 2 km apart; fixed-size marker columns overlapped at
+  small map scales, and labels sat under marker pills).
+- Spine moved right (SPINE_X 84 → 150) so a 72px marker lane fits on its left;
+  labels moved to spine + 80 units with short names (full names stay in the
+  sheet "Standing at" line); a label nudge pass guards against label-label
+  overlap and canvas-bottom clipping. No marker lane ever goes right, so no
+  label can sit under a marker.
+- Vertical markers now place in screen px after layout: centres within 64px
+  share lanes [on-spine, 72px left]; a third marker in one cluster is nudged
+  vertically to the nearest free slot (down, then up) and clamped on-screen.
+  Glide still animates only the along-track transform; lateral lane changes
+  jump. The horizontal driver strip keeps the old same-segment viewBox lanes.
+- Collapsed sheet slimmed so the map is the hero: the seat picker + family
+  toggle moved into the expanded sheet (shared `SeatPicker` component); the
+  collapsed bar shows raise action + hint only. Header paddings trimmed.
+  Expand/collapse, all actions, and all states unchanged.
+- Verified by a fresh web-build + Playwright capture at 390×844
+  (`~/workspace/your_files/Swat_Raah_Map_Screen.png`, opened and inspected):
+  no overlapping marker pills, all stop labels fully readable, map ~60% of
+  screen height in the default state.
+- Known, unchanged: a vehicle sitting exactly on a stop can cover that stop's
+  small demand/family badge (labels are never covered); in the expanded-sheet
+  state the map compresses and its bottom can sit behind the sheet edge
+  (pre-existing layout behaviour, untouched by this fix).

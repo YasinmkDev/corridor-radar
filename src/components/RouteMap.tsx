@@ -26,10 +26,12 @@ import { shortStopName } from '../lib/stopNames';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-/* Vertical map geometry (viewBox units). Spine scaled by kilometres. */
+/* Vertical map geometry (viewBox units). Spine scaled by kilometres.
+   Spine sits right of centre so a 72px marker lane fits on its left while
+   labels keep a clear gap on its right. */
 const V_W = 360;
 const V_H = 560;
-const SPINE_X = 84;
+const SPINE_X = 150;
 const V_TOP = 32;
 const V_TRACK = 440;
 /* Horizontal strip geometry. */
@@ -180,6 +182,26 @@ const RouteMapSvg = ({
     return { x: H_LEFT + f * H_TRACK, y: SPINE_Y };
   };
 
+  /* Vertical label de-collision: two-line labels sit right of the spine
+     (short names, so they always fit the canvas). Nudge a label down to
+     the nearest free slot if it would overlap the previous one, and never
+     let the last label run off the canvas bottom. Stop gaps (80+ units)
+     exceed label height, so shifts are 0 in practice — this is a guard. */
+  const labelShift: number[] = [];
+  if (orientation === 'vertical') {
+    let prevBottom = -Infinity;
+    corridor.stops.forEach((_, i) => {
+      const { y } = stopPoint(i);
+      let top = y - 12;
+      if (top < prevBottom + 6) top = prevBottom + 6;
+      if (top + 40 > 556) top = 556 - 40;
+      labelShift.push(top - (y - 12));
+      prevBottom = top + 40;
+    });
+  } else {
+    corridor.stops.forEach(() => labelShift.push(0));
+  }
+
   const rulerTicks =
     orientation === 'vertical'
       ? [0, Math.round(totalKm / 2), totalKm].map((km, k) => ({
@@ -314,10 +336,10 @@ const RouteMapSvg = ({
         const stopLabel =
           orientation === 'vertical' ? (
             <G key={`label-${i}`}>
-              {label(x + 20, y + 5, stop.name, state === 'passed' ? secondary : ink, typeScale.mapLabel, 'start', `name-${i}`)}
+              {label(x + 80, y + labelShift[i] + 5, shortStopName(stop.name), state === 'passed' ? secondary : ink, typeScale.mapLabel, 'start', `name-${i}`)}
               {label(
-                x + 20,
-                y + 21,
+                x + 80,
+                y + labelShift[i] + 21,
                 `${stop.km} km${i === myStopIndex ? ' · You are here' : state === 'next' ? ' · NEXT' : overlay.demandCount > 0 ? ` · ${overlay.demandCount} waiting` : ''}`,
                 secondary,
                 typeScale.mapMeta,
@@ -384,7 +406,10 @@ export function RouteMap(props: RouteMapProps) {
   const vbW = isVertical ? V_W : H_W;
   const vbH = isVertical ? V_H : H_H;
 
-  /* Marker targets: fractions + lane offsets. Pure derivation, memoised. */
+  /* Marker targets: fractions + same-segment lane offsets (the horizontal
+     strip keeps these viewBox lanes). The vertical map places markers
+     separately below, in screen px, once layout is known. Pure derivation,
+     memoised. */
   const markers = useMemo(() => {
     const withFraction = vehicles.map((v) => ({
       v,
@@ -395,6 +420,59 @@ export function RouteMap(props: RouteMapProps) {
   }, [vehicles, corridor, totalKm]);
 
   const fit = layout ? fitRect(layout.w, layout.h, vbW, vbH, isVertical ? 'min' : 'mid') : null;
+
+  /* Vertical marker de-collision (screen px): markers whose centres would
+     fall within 64px vertically share lanes [on-spine, 72px left]; a third
+     marker in one cluster is nudged vertically to the nearest free slot.
+     No lane ever goes right, so no marker can sit under a stop label.
+     Lateral lane changes jump (only the along-track glide animates). */
+  const verticalPlaced = useMemo(() => {
+    if (!isVertical || !fit || !layout) return null;
+    const spinePx = fit.offsetX + SPINE_X * fit.scale;
+    const ordered = markers
+      .map((m) => ({
+        id: m.v.id,
+        yPx: fit.offsetY + (V_TOP + m.fraction * V_TRACK) * fit.scale,
+      }))
+      .sort((a, b) => a.yPx - b.yPx);
+    const placed = new Map<string, { lanePx: number; finalY: number }>();
+    const occupied: { lanePx: number; y: number }[] = [];
+    const minY = 48;
+    const maxY = Math.max(minY, layout.h - 48);
+    for (const m of ordered) {
+      let lanePx = 0;
+      let finalY = m.yPx;
+      let done = false;
+      for (const lane of [0, -72]) {
+        if (!occupied.some((o) => o.lanePx === lane && Math.abs(o.y - m.yPx) < 64)) {
+          lanePx = lane;
+          done = true;
+          break;
+        }
+      }
+      if (!done) {
+        lanePx = 0;
+        for (let k = 1; k <= 8 && !done; k++) {
+          const down = m.yPx + k * 72;
+          if (!occupied.some((o) => o.lanePx === 0 && Math.abs(o.y - down) < 64)) {
+            finalY = down;
+            done = true;
+          } else {
+            const up = m.yPx - k * 72;
+            if (!occupied.some((o) => o.lanePx === 0 && Math.abs(o.y - up) < 64)) {
+              finalY = up;
+              done = true;
+            }
+          }
+        }
+        if (!done) finalY = m.yPx; // pathological pile-up: overlap beats clipping
+      }
+      finalY = Math.max(minY, Math.min(maxY, finalY));
+      placed.set(m.id, { lanePx, finalY });
+      occupied.push({ lanePx, y: finalY });
+    }
+    return { spinePx, placed };
+  }, [markers, fit, layout, isVertical]);
 
   const pointPx = (fraction: number, laneUnits: number): { x: number; y: number } => {
     if (!fit) return { x: 0, y: 0 };
@@ -420,8 +498,9 @@ export function RouteMap(props: RouteMapProps) {
     const next = new Map(animMap);
     markers.forEach((m) => {
       seen.add(m.v.id);
+      const placedV = isVertical ? verticalPlaced?.placed.get(m.v.id) : undefined;
       const p = pointPx(m.fraction, 0);
-      const target = isVertical ? p.y : p.x;
+      const target = isVertical ? (placedV?.finalY ?? p.y) : p.x;
       let anim = next.get(m.v.id);
       if (!anim) {
         anim = new Animated.Value(0);
@@ -450,7 +529,7 @@ export function RouteMap(props: RouteMapProps) {
     });
     if (changed) setAnimMap(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, fit, reducedMotion, animMap]);
+  }, [markers, verticalPlaced, fit, reducedMotion, animMap]);
 
   const lead = leadVehicleId ? (vehicles.find((v) => v.id === leadVehicleId) ?? null) : null;
 
@@ -506,13 +585,17 @@ export function RouteMap(props: RouteMapProps) {
       {fit
         ? markers.map((m) => {
             const p = pointPx(m.fraction, m.lane);
+            const placedV = isVertical ? verticalPlaced?.placed.get(m.v.id) : undefined;
             const isMine = m.v.id === myVehicleId;
             const isLead = lead !== null && m.v.id === lead.id;
             const isSelected = selectedVehicleId === m.v.id;
             const anim = animMap.get(m.v.id) ?? new Animated.Value(0);
-            const alongTarget = isVertical ? p.y : p.x;
+            const alongTarget = isVertical ? (placedV?.finalY ?? p.y) : p.x;
             const hasTopTag = isVertical && ((isLead && etaForLead !== null) || isMine);
-            const wrapperLeft = (isVertical ? p.x : alongTarget) - 36;
+            const crossPx = isVertical
+              ? (verticalPlaced ? verticalPlaced.spinePx + (placedV?.lanePx ?? 0) : p.x)
+              : p.x;
+            const wrapperLeft = (isVertical ? crossPx : alongTarget) - 36;
             const wrapperTop = (isVertical ? alongTarget : p.y) - 17 - (hasTopTag ? 28 : 0);
             const glyphColor = orientation === 'horizontal' && isMine ? colors.white : colors.ink;
             const pillBg = orientation === 'horizontal' && isMine ? colors.ink : colors.white;
