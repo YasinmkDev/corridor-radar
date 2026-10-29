@@ -1,7 +1,11 @@
-# Swat Raah — Corridor Radar
+# CorridorRadar
 
-A unified dual-mode React Native (Expo SDK 57, TypeScript) app for shared local
-transport in Swat, KPK, Pakistan. One app, two modes, one live corridor state:
+Corridor radar for shared transport — the visibility layer for fixed-route
+vans, minibuses, and coaches. Where shared vehicles run corridors with no
+timetable and no live tracking, drivers drive empty because they cannot see
+waiting passengers ahead, and passengers wait blind because they cannot see
+approaching vehicles. CorridorRadar closes that gap: one app, two modes, one
+live corridor state.
 
 - **Passenger Mode ("Sawari")** — a live corridor radar as a vehicle list on a
   timeline: approaching vehicles with ETAs, seat counts, and Family/Ladies
@@ -24,13 +28,19 @@ expo-font + Google Fonts, system-font fallback if loading fails). Screens are
 composed from the reusable library in `src/components/` — no screen
 duplicates button/card/chip/sheet styles.
 
-## Corridors (live simulation)
+## Demo corridors included (Swat, Pakistan)
 
-- **Mingora ⇄ Matta:** Mingora General Stand (0 km) → Kanju Chowk (5) →
-  Dherai (9) → Kabal Chowk (13) → Sirsinai (17) → Matta General Stand (22).
-- **Mingora ⇄ Bahrain:** Mingora / Fizagat (0) → Charbagh Chowk (11) →
-  Khwazakhela Bypass (27) → Fatehpur (36) → Madyan Stand (48) → Bahrain
-  Bazaar (58).
+The bundled data is one example deployment. The engine itself is
+corridor-agnostic — corridors, stops, vehicles, and fares live in seed data
+(`src/data/seed.ts`), so the same build runs another city's corridors by
+swapping the data.
+
+- **Mingora ⇄ Matta (live simulation):** Mingora General Stand (0 km) →
+  Kanju Chowk (5) → Dherai (9) → Kabal Chowk (13) → Sirsinai (17) → Matta
+  General Stand (22).
+- **Mingora ⇄ Bahrain (live simulation):** Mingora / Fizagat (0) → Charbagh
+  Chowk (11) → Khwazakhela Bypass (27) → Fatehpur (36) → Madyan Stand (48) →
+  Bahrain Bazaar (58).
 
 The fares directory additionally lists Mingora–Malam Jabba (40 km) and
 Mingora–Peshawar–Islamabad as directory-only corridors (no live simulation).
@@ -87,6 +97,9 @@ npx expo export --platform android --max-workers 1   # single-platform bundle pr
 
 ## Notes
 
+- Demo data: the bundled corridors, stops, fares, driver names/plates, and
+  counts are the Swat example deployment — sample data, not verified real
+  tariffs or real operators.
 - Live-vs-sample data: vehicle ETAs, driver names/plates/trips, waiting
   counts, and active-vehicle counts on live screens come from the engine and
   seed data; they intentionally differ from the design mockups' sample
